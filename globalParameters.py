@@ -4,7 +4,7 @@ log_prefix = '[' + os.path.basename(__file__) +'][RODC-DDPG]'
 class GP:
     # System Parameters
     n_episode = 1
-    n_time_steps = 5
+    n_time_steps = 10
     delta_t   = 1
     @staticmethod
     def RESET(env, agent):
@@ -44,5 +44,7 @@ class GP:
                 O.append(ob)
                 GP.obs_on_road.remove(ob)
         GP.LOG(log_prefix+'[line-13][received observations len(O)=%d]',len(O),'optional')
+        for ob in O:
+            GP.LOG(log_prefix+'[line-13][received observation s[%d]]', ob.id, 'optional')
         return O
 

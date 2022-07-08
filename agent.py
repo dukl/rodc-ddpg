@@ -16,8 +16,11 @@ class Agent:
         GP.LOG(log_prefix+'[line-5][Initialize the action buffer len(A)=%d and len(A_avai)=%d]',(len(self.A),len(self.A_avai)),'optional')
         self.sc = OBSRWD(-1)  # latest observation RODC-DDPG Line-6
         GP.LOG(log_prefix+'[line-6][Initialize the latest observation sc randomly id(sc)=%d ]', (self.sc.id), 'optional')
-        self.T = []
-        GP.LOG(log_prefix+'[line-8][Initialize the raw trajectory T: len(T)=%d]', (len(self.T)), 'optional')
+        self.T = [[] for _ in range(2)]
+        GP.LOG(log_prefix+'[line-8][Initialize the raw trajectory T for actions: len(T[0])=%d]', (len(self.T[0])), 'optional')
+        GP.LOG(log_prefix+'[line-8][Initialize the raw trajectory T for observations: len(T[1])=%d]', (len(self.T[1])), 'optional')
+        self.D = []
+        GP.LOG(log_prefix + '[line-8][Initialize the samples for D_fm/D_ddpg: len(D)=%d]', (len(self.D)), 'optional')
 
 
     def reset(self):
@@ -30,8 +33,8 @@ class Agent:
             self.A_avai.append(action)
             GP.LOG(log_prefix+'[line-16][initialize an action a[%d], len(A)=%d, len(A_avai)=%d]', (action.id,len(self.A),len(self.A_avai)), 'optional')
         else:
-            self.T.extend(obs)
-            GP.LOG(log_prefix+'[line-18][agent adds observations and rewards into T: len(T)=%d]', (len(self.T)), 'optional')
+            self.T[1].extend(obs)
+            GP.LOG(log_prefix+'[line-18][agent adds observations and rewards into T: len(T[1])=%d]', (len(self.T[1])), 'optional')
             if len(obs) is not 0:
                 O_avai = []
                 GP.LOG(log_prefix + '[line-7][Initialize the received observations O_avai: len(O_avai)=%d]', (len(O_avai)), 'optional')
@@ -52,6 +55,25 @@ class Agent:
         action = ACT(ts, act_value)
         self.A.append(action)
         GP.LOG(log_prefix+'[line-25][agent adds a[%d] into A: len(A)=%d, len(A_avai)=%d]', (action.id, len(self.A), len(self.A_avai)), 'optional')
-        self.T.append(action)
-        GP.LOG(log_prefix+'[line-26][agent adds a[%d] into T: len(T)=%d]', (action.id, len(self.T)), 'optional')
+        self.T[0].append(action)
+        GP.LOG(log_prefix+'[line-26][agent adds a[%d] into T: len(T[0])=%d]', (action.id, len(self.T[0])), 'optional')
+        GP.LOG(log_prefix+'[line-27][Check if exists adjacent obs]', None, 'optional')
+        self.T[1].sort(key=lambda OBSRWD: OBSRWD.id, reverse=False)
+        if len(self.T[1]) >= 2:
+            remove_eles = [[] for _ in range(2)]
+            for index in range(len(self.T[1])-1):
+                if self.T[1][index].id + 1 == self.T[1][index+1].id:
+                    remove_eles[1].append(self.T[1][index])
+                    for act in self.T[0]:
+                        if act.id == self.T[1][index].id:
+                            remove_eles[0].append(act)
+                            GP.LOG(log_prefix+'[line-28][agent adds samples (s[%d], a[%d], s[%d]) into D_ddpg and D_fm]', (self.T[1][index].id, act.id, self.T[1][index+1].id), 'optional')
+                            self.D.append([self.T[1][index], act, self.T[1][index+1]])
+                            break
+            for ele in remove_eles[0]:
+                self.T[0].remove(ele)
+                GP.LOG(log_prefix + '[line-29][agent removes elements a[%d] from T: len(T[0])=%d, len(T[1])=%d]',(ele.id, len(self.T[0]), len(self.T[1])), 'optional')
+            for ele in remove_eles[1]:
+                self.T[1].remove(ele)
+                GP.LOG(log_prefix + '[line-29][agent removes elements s[%d] from T: len(T[0])=%d, len(T[1])=%d]', (ele.id, len(self.T[0]), len(self.T[1])), 'optional')
         return action
