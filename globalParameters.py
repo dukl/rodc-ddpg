@@ -1,8 +1,10 @@
 from logger import log_debug,log_data
+import os
+log_prefix = '[' + os.path.basename(__file__) +'][RODC-DDPG]'
 class GP:
     # System Parameters
     n_episode = 1
-    n_time_steps = 1
+    n_time_steps = 5
     delta_t   = 1
     @staticmethod
     def RESET(env, agent):
@@ -36,9 +38,11 @@ class GP:
     @staticmethod
     def CHECK_OBSERVATIONS(ts):
         O= []
+        GP.LOG(log_prefix+'[line-7][Initialize the received observations O: len(O)=%d]',(len(O)), 'optional')
         for ob in GP.obs_on_road:
             if ob.id + ob.n_ts <= ts:
                 O.append(ob)
                 GP.obs_on_road.remove(ob)
-        GP.LOG('[System][RODC-DDPG][line-12][received observations len(O)=%d]',len(O),'optional')
+        GP.LOG(log_prefix+'[line-13][received observations len(O)=%d]',len(O),'optional')
+        return O
 

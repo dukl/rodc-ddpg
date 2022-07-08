@@ -12,5 +12,5 @@ class ENV:
         GP.LOG(log_prefix+'[line-24][env executes a[%d]]',(action.id),'optional')
     def send_obs_reward(self, ts):
         obs = OBSRWD(ts)
-        GP.LOG(log_prefix+'[env sends s[%d], delay=%f]', (obs.id, obs.n_ts), 'optional')
+        GP.LOG(log_prefix+'[line-12][env sends s[%d], delay=%f]', (obs.id, obs.n_ts), 'optional')
         return obs
