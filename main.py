@@ -11,4 +11,4 @@ if __name__ == '__main__':
         GP.RESET(env,agent)
         for ts in range(GP.n_time_steps):
             GP.LOG('[System][RODC-DDPG][line-11][Training Time Steps - %d]',ts,'debug')
-            action = agent.receive_observations(GP.CHECK_OBSERVATIONS(ts))
+            action = agent.receive_observations(GP.CHECK_OBSERVATIONS(ts),ts)
