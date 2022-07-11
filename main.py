@@ -2,19 +2,19 @@ from environment import ENV
 from agent import Agent
 from globalParameters import GP
 
-import os
-log_prefix = '[' + os.path.basename(__file__) +'][RODC-DDPG]'
+import os,sys
+log_prefix = '[' + os.path.basename(__file__)
 
 if __name__ == '__main__':
-    GP.LOG(log_prefix+'[Line-1][Initialize env and agent]',None,'debug')
+    GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Line-1][Initialize env and agent]',None,'debug')
     env, agent = ENV(), Agent()
     for ep in range(GP.n_episode):
-        GP.LOG(log_prefix+'[line-9][Training Episode - %d]',ep+1,'debug')
-        GP.LOG(log_prefix+'[line-10][Reset env and agent]', None, 'debug')
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-9][Training Episode - %d]',ep+1,'debug')
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-10][Reset env and agent]', None, 'debug')
         GP.RESET(env,agent)
         for ts in range(GP.n_time_steps):
-            GP.LOG(log_prefix+'[line-11][Training Time Steps - %d]',ts,'debug')
+            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-11][Training Time Steps - %d]',ts,'debug')
             obs_reward = env.send_obs_reward(ts)
             GP.obs_on_road.append(obs_reward)
             action = agent.receive_observations(GP.CHECK_OBSERVATIONS(ts),ts)
-            obs_reward = env.execute_action(action)
+            env.execute_action(action)

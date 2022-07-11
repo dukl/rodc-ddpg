@@ -1,7 +1,7 @@
 from globalParameters import GP
 from actions import ACT
-import os
-log_prefix = '[' + os.path.basename(__file__) +'][RODC-DDPG]'
+import os,sys
+log_prefix = '[' + os.path.basename(__file__)
 class ACTOR:
     def __init__(self):
         pass
@@ -15,7 +15,7 @@ class DDPG:
         self.actor = ACTOR()
         self.critic = CRITIC()
     def act(self, ob):
-        GP.LOG(log_prefix+'[line-24][generate action value to be executed]', None, 'optional')
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-24][generate action value to be executed]', None, 'optional')
         return 1
 
 

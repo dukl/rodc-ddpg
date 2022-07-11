@@ -1,6 +1,6 @@
 from logger import log_debug,log_data
-import os
-log_prefix = '[' + os.path.basename(__file__) +'][RODC-DDPG]'
+import os, sys
+log_prefix = '[' + os.path.basename(__file__)
 class GP:
     # System Parameters
     n_episode = 1
@@ -11,11 +11,20 @@ class GP:
         env.reset()
         agent.reset()
 
+    # System Model
+    n_VM = 8 # number of VMs
+    n_NF_inst = [6,5,4,3,2,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF
+    nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF"]
+    next_nf   = [[["SMF",1],["AUSF",5]], [["AMF",0], ["UPF",2]], [["SMF",1]], [["UDR",4]], [["",-1]], [["UDM",3]]]
+
     # Log setting
     logDebugAvai = True
     logDataAvai  = True
     logOptional  = True
+    logTopology  = True
     @staticmethod
+    def getLogInfo(log_prefix, line):
+        return log_prefix +'-' +str(line) +'][RODC-DDPG]'
     def LOG(str, value, type):
         if GP.logDebugAvai and type is 'debug':
             if value is not None:
@@ -32,19 +41,25 @@ class GP:
                 log_debug.logger.debug(str % value)
             else:
                 log_debug.logger.debug(str)
+        if GP.logTopology and type is 'topology':
+            if value is not None:
+                log_debug.logger.debug(str % value)
+            else:
+                log_debug.logger.debug(str)
 
     # System Running
     obs_on_road = []
     @staticmethod
     def CHECK_OBSERVATIONS(ts):
         O= []
-        GP.LOG(log_prefix+'[line-7][Initialize the received observations O: len(O)=%d]',(len(O)), 'optional')
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-7][Initialize the received observations O: len(O)=%d]',(len(O)), 'optional')
         for ob in GP.obs_on_road:
             if ob.id + ob.n_ts <= ts:
                 O.append(ob)
                 GP.obs_on_road.remove(ob)
-        GP.LOG(log_prefix+'[line-13][received observations len(O)=%d]',len(O),'optional')
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-13][received observations len(O)=%d]',len(O),'optional')
         for ob in O:
-            GP.LOG(log_prefix+'[line-13][received observation s[%d]]', ob.id, 'optional')
+            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[agent receives observation s[%d] at time %d]', (ob.id, ts), 'data')
+            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-13][received observation s[%d]]', ob.id, 'optional')
         return O
 
