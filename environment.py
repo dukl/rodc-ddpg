@@ -14,6 +14,8 @@ class ENV:
         self.request_messages = []
         self.ue_index = 0
         self.it_time = 0
+        self.n_msg_req = []
+        self.n_msg_reject = []
 
     def initial_topology(self):
         for i in range(GP.n_VM):
@@ -51,7 +53,8 @@ class ENV:
 
     def execute_action(self, action):
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-24][env executes a[%d]]',(action.id),'optional')
-        self.running(action.id + GP.delta_t)
+        n_msg_reject = self.running(action.id + GP.delta_t)
+        self.n_msg_reject.append(n_msg_reject)
 
     def send_obs_reward(self, ts):
         obs = OBSRWD(ts)
@@ -59,27 +62,24 @@ class ENV:
         return obs
 
     def running(self, next_t):
+        n_msg_reject = 0
         while self.it_time < next_t:
             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Time Point: %f]', (self.it_time), 'optional')
-            if len(self.request_messages) > 0:
-                req = self.request_messages[0]
-                del self.request_messages[0] # 1 req per 0.01 second
-                lout, fwd_idx = self.nfs[6][0].l_out[0], self.nfs[6][0].fwd_idx
-                if lout[fwd_idx][5] < lout[fwd_idx][4]:
-                    req.cur_state = [lout[fwd_idx][0], lout[fwd_idx][1], lout[fwd_idx][2]]
-                    self.vms[lout[fwd_idx][0]].msg_queue.append(req)
-                    GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[REQ: RISE -> AMF (%d,%d,%d,%d,%d)]',(req.cur_state[0], req.cur_state[1], req.cur_state[2], lout[fwd_idx][4], lout[fwd_idx][5]), 'optional')
-                    lout[fwd_idx][5] += 1
-                else:
-                    lout[fwd_idx][5] = 0
-                    self.nfs[6][0].fwd_idx = (self.nfs[6][0].fwd_idx + 1)%len(lout)
-                    req.cur_state = [lout[self.nfs[6][0].fwd_idx][0], lout[self.nfs[6][0].fwd_idx][1], lout[self.nfs[6][0].fwd_idx][2]]
-                    self.vms[lout[self.nfs[6][0].fwd_idx][0]].msg_queue.append(req)
-                    GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[REQ: RISE -> AMF (%d,%d,%d,%d,%d)]',(req.cur_state[0], req.cur_state[1], req.cur_state[2],lout[self.nfs[6][0].fwd_idx][4],lout[self.nfs[6][0].fwd_idx][5]), 'optional')
-            else:
-                GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[No more REQs sending from RISE -> AMF]', None, 'optional')
+            for vm in self.vms:
+                if len(vm.msg_queue) > 0:
+                    req = vm.msg_queue[0]
+                    del vm.msg_queue[0]
+                    msg_to_nf = self.nfs[req.cur_state[1]][req.cur_state[2]]
+                    if msg_to_nf.nf_id < 6 and len(msg_to_nf.msg_queue) + 1 > msg_to_nf.l_max:
+                        req.is_reject = True
+                        n_msg_reject += 1
+                        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[VM-%d sends REQ-%d-%s to NF-%d-%d-%s] - Reject (Overload)', (vm.id, req.type_id[0], req.type_id[1], msg_to_nf.nf_id, msg_to_nf.inst_id, msg_to_nf.type), 'request')
+                    else:
+                        msg_to_nf.msg_queue.append(req)
+                        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[VM-%d sends REQ-%d-%s to NF-%d-%d-%s] - Successfully', (vm.id, req.type_id[0], req.type_id[1], msg_to_nf.nf_id, msg_to_nf.inst_id, msg_to_nf.type), 'request')
 
             self.it_time += 0.01
+        return n_msg_reject
 
     def update_ue_reqs_every_time_step(self, n_msgs):
         nf_rise = self.nfs[6]
@@ -87,6 +87,7 @@ class ENV:
             index = random.randint(0, len(nf_rise)-1)
             self.vms[self.nfs[6][index].loc_id].msg_queue.append(REQ(i+self.ue_index, 0, nf_rise[index].loc_id, 6, index))
         self.ue_index += n_msgs
+        self.n_msg_req.append(n_msgs)
 
 class VM:
     def __init__(self, id):

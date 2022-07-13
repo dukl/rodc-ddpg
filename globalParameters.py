@@ -14,7 +14,7 @@ class GP:
     # System Model
     n_UEs = 20
     n_VM = 8 # number of VMs
-    n_NF_inst = [2,2,2,2,2,2,2] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF
+    n_NF_inst = [2,2,2,2,2,2,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF
     nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF", "RISE"]
     next_nf   = [[["SMF",1],["AUSF",5]], [["AMF",0], ["UPF",2]], [["SMF",1]], [["UDR",4]], [["",-1]], [["UDM",3]],[["AMF", 0]]]
     req_type  = ["RegistrationRequest","AuthenticationResponse","SecurityModeComplete","IdentityResponse","RegistrationComplete","PDUSessionEstablishmentRequest"]
