@@ -12,16 +12,22 @@ class GP:
         agent.reset()
 
     # System Model
+    n_UEs = 20
     n_VM = 8 # number of VMs
-    n_NF_inst = [6,5,4,3,2,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF
-    nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF"]
-    next_nf   = [[["SMF",1],["AUSF",5]], [["AMF",0], ["UPF",2]], [["SMF",1]], [["UDR",4]], [["",-1]], [["UDM",3]]]
+    n_NF_inst = [2,2,2,2,2,2,2] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF
+    nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF", "RISE"]
+    next_nf   = [[["SMF",1],["AUSF",5]], [["AMF",0], ["UPF",2]], [["SMF",1]], [["UDR",4]], [["",-1]], [["UDM",3]],[["AMF", 0]]]
+    req_type  = ["RegistrationRequest","AuthenticationResponse","SecurityModeComplete","IdentityResponse","RegistrationComplete","PDUSessionEstablishmentRequest"]
+
+    # rate in NF/VM
+    mu_RISE = 100
 
     # Log setting
     logDebugAvai = True
-    logDataAvai  = True
+    logDataAvai  = False
     logOptional  = True
     logTopology  = True
+    logRequest   = True
     @staticmethod
     def getLogInfo(log_prefix, line):
         return log_prefix +'-' +str(line) +'][RODC-DDPG]'
@@ -42,6 +48,11 @@ class GP:
             else:
                 log_debug.logger.debug(str)
         if GP.logTopology and type is 'topology':
+            if value is not None:
+                log_debug.logger.debug(str % value)
+            else:
+                log_debug.logger.debug(str)
+        if GP.logRequest and type is 'request':
             if value is not None:
                 log_debug.logger.debug(str % value)
             else:

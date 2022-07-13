@@ -5,11 +5,16 @@ import random
 import os, sys
 log_prefix = '[' + os.path.basename(__file__)
 
+
 class ENV:
     def __init__(self):
         self.vms = []
         self.nfs = [[] for _ in range(len(GP.n_NF_inst))]
         self.initial_topology()
+        self.request_messages = []
+        self.ue_index = 0
+        self.it_time = 0
+
     def initial_topology(self):
         for i in range(GP.n_VM):
             self.vms.append(VM(i))
@@ -26,6 +31,7 @@ class ENV:
             for nf in vm.nf_instances:
                 log_tmp += '('+nf.type+','+str(nf.inst_id)+')'
             GP.LOG(log_tmp, None, 'topology')
+
     def reset(self):
         for nf in self.nfs:
             for inst in nf:
@@ -33,19 +39,54 @@ class ENV:
                 for i in range(len(inst.next_nf)):
                     nnf = self.nfs[inst.next_nf[i][1]]
                     for ninst in nnf:
-                        inst.l_out[i].append([ninst.loc_id, ninst.nf_id, ninst.inst_id, 1/len(nnf)])
-                        log_tmp += 'inst('+ str(ninst.loc_id) + ',' + str(ninst.nf_id) + ',' + str(ninst.inst_id) + ',' + str(1/len(nnf)) + ')'
+                        inst.l_out[i].append([ninst.loc_id, ninst.nf_id, ninst.inst_id, round(random.random(),2), 0, 0]) # location, nf, instance, f(l), total, forwarding times
+                    max = 0
+                    for lo in inst.l_out[i]:
+                        if lo[3] > max:
+                            max = lo[3]
+                    for lo in inst.l_out[i]:
+                        lo[4] = int(10/max*lo[3])
+                        log_tmp += 'inst(' + str(lo[0]) + ',' + str(lo[1]) + ',' + str(lo[2]) + ',' + str(lo[3]) + ',' + str(lo[4]) + ',' + str(lo[5]) + ')'
                 GP.LOG(log_tmp, None, 'topology')
-
-
-
 
     def execute_action(self, action):
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-24][env executes a[%d]]',(action.id),'optional')
+        self.running(action.id + GP.delta_t)
+
     def send_obs_reward(self, ts):
         obs = OBSRWD(ts)
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-12][env sends s[%d], delay=%f]', (obs.id, obs.n_ts), 'optional')
         return obs
+
+    def running(self, next_t):
+        while self.it_time < next_t:
+            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Time Point: %f]', (self.it_time), 'optional')
+            if len(self.request_messages) > 0:
+                req = self.request_messages[0]
+                del self.request_messages[0] # 1 req per 0.01 second
+                lout, fwd_idx = self.nfs[6][0].l_out[0], self.nfs[6][0].fwd_idx
+                if lout[fwd_idx][5] < lout[fwd_idx][4]:
+                    req.cur_state = [lout[fwd_idx][0], lout[fwd_idx][1], lout[fwd_idx][2]]
+                    self.vms[lout[fwd_idx][0]].msg_queue.append(req)
+                    GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[REQ: RISE -> AMF (%d,%d,%d,%d,%d)]',(req.cur_state[0], req.cur_state[1], req.cur_state[2], lout[fwd_idx][4], lout[fwd_idx][5]), 'optional')
+                    lout[fwd_idx][5] += 1
+                else:
+                    lout[fwd_idx][5] = 0
+                    self.nfs[6][0].fwd_idx = (self.nfs[6][0].fwd_idx + 1)%len(lout)
+                    req.cur_state = [lout[self.nfs[6][0].fwd_idx][0], lout[self.nfs[6][0].fwd_idx][1], lout[self.nfs[6][0].fwd_idx][2]]
+                    self.vms[lout[self.nfs[6][0].fwd_idx][0]].msg_queue.append(req)
+                    GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[REQ: RISE -> AMF (%d,%d,%d,%d,%d)]',(req.cur_state[0], req.cur_state[1], req.cur_state[2],lout[self.nfs[6][0].fwd_idx][4],lout[self.nfs[6][0].fwd_idx][5]), 'optional')
+            else:
+                GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[No more REQs sending from RISE -> AMF]', None, 'optional')
+
+            self.it_time += 0.01
+
+    def update_ue_reqs_every_time_step(self, n_msgs):
+        nf_rise = self.nfs[6]
+        for i in range(n_msgs):
+            index = random.randint(0, len(nf_rise)-1)
+            self.vms[self.nfs[6][index].loc_id].msg_queue.append(REQ(i+self.ue_index, 0, nf_rise[index].loc_id, 6, index))
+        self.ue_index += n_msgs
 
 class VM:
     def __init__(self, id):
@@ -67,3 +108,15 @@ class NF:
         self.inst_id   = inst_id
         self.next_nf   = GP.next_nf[self.nf_id]
         self.l_out     = [[] for _ in range(len(self.next_nf))]  # link out to which instances
+        self.fwd_idx   = 0 # forwarding index
+
+class REQ:
+    def __init__(self, ue_id, type_id, loc_id, nf_id, inst_id):
+        self.is_done       = False
+        self.is_reject     = False
+        self.is_processing = False
+        self.cur_state     = [loc_id, nf_id, inst_id] # loc_id, nf_id, inst_id
+        self.next_nf       = GP.next_nf[self.cur_state[1]]
+        self.ue_id         = ue_id
+        self.type_id       = [type_id, GP.req_type[type_id]]
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[newly generated REQ: %d, %d-%s]', (self.ue_id, self.type_id[0], self.type_id[1]),'request')
