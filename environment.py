@@ -77,6 +77,24 @@ class ENV:
                     else:
                         msg_to_nf.msg_queue.append(req)
                         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[VM-%d sends REQ-%d-%s to NF-%d-%d-%s] - Successfully', (vm.id, req.type_id[0], req.type_id[1], msg_to_nf.nf_id, msg_to_nf.inst_id, msg_to_nf.type), 'request')
+            for nf in self.nfs:
+                for inst in nf:
+                    req, cpu_left = inst.nf_processing[0], 0
+                    if inst.nf_processing[0] is not None:
+                        cpu_left = inst.C - inst.nf_processing[1]
+                        if cpu_left > 0:
+                            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'NF-%d-%d-%d-%s is processed REQ-%d-%s (%d)', (inst.loc_id, inst.nf_id, inst.inst_id, inst.type, req.type_id[0], req.type_id[1], GP.require_cpu_cycles[req.type_id[0]][inst.nf_id]), 'request')
+                    else:
+                        cpu_left = inst.C
+                    while (cpu_left > 0 and len(inst.msg_queue) > 0):
+                        req = inst.msg_queue[0]
+                        del inst.msg_queue[0]
+                        cpu_left -= GP.require_cpu_cycles[req.type_id[0]][inst.nf_id]
+                        if cpu_left > 0:
+                            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'NF-%d-%d-%d-%s is processed REQ-%d-%s (%d)', (inst.loc_id, inst.nf_id, inst.inst_id, inst.type, req.type_id[0], req.type_id[1], GP.require_cpu_cycles[req.type_id[0]][inst.nf_id]), 'request')
+                    if cpu_left <= 0:
+                        inst.nf_processing = [req, -cpu_left]
+                        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + 'NF-%d-%d-%d-%s is processing REQ-%d-%s (%d)', (inst.loc_id, inst.nf_id, inst.inst_id, inst.type, req.type_id[0], req.type_id[1], GP.require_cpu_cycles[req.type_id[0]][inst.nf_id]), 'request')
 
             self.it_time += 0.01
         return n_msg_reject
@@ -104,12 +122,13 @@ class NF:
         self.loc_id  = loc_id  # located on which VM
         self.l_max     = 100  # current maximum length of queue caused by dynamics
         self.msg_queue = [] # request signaling messages
-        self.C         = 0  # current CPU cycles
+        self.C         = 10000  # current CPU cycles
         self.nf_id     = nf_id
         self.inst_id   = inst_id
         self.next_nf   = GP.next_nf[self.nf_id]
         self.l_out     = [[] for _ in range(len(self.next_nf))]  # link out to which instances
         self.fwd_idx   = 0 # forwarding index
+        self.nf_processing = [None,0]
 
 class REQ:
     def __init__(self, ue_id, type_id, loc_id, nf_id, inst_id):

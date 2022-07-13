@@ -18,6 +18,7 @@ class GP:
     nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF", "RISE"]
     next_nf   = [[["SMF",1],["AUSF",5]], [["AMF",0], ["UPF",2]], [["SMF",1]], [["UDR",4]], [["",-1]], [["UDM",3]],[["AMF", 0]]]
     req_type  = ["RegistrationRequest","AuthenticationResponse","SecurityModeComplete","IdentityResponse","RegistrationComplete","PDUSessionEstablishmentRequest"]
+    require_cpu_cycles = [[1000,0,0,1000,1000,1000,10], [1000,0,0,1000,10,1000,10],[1000,0,0,0,0,0,10],[1000,0,0,0,0,0,10],[1000,0,0,0,0,0,10],[1000,1000,1000,0,0,0,10]]
 
     # rate in NF/VM
     mu_RISE = 100
