@@ -4,7 +4,7 @@ log_prefix = '[' + os.path.basename(__file__)
 class GP:
     # System Parameters
     n_episode = 1
-    n_time_steps = 10
+    n_time_steps = 200
     delta_t   = 1
     @staticmethod
     def RESET(env, agent):
@@ -14,7 +14,7 @@ class GP:
     # System Model
     n_UEs = 50
     n_VM = 8 # number of VMs
-    n_NF_inst = [2,2,2,2,2,2,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF
+    n_NF_inst = [2,2,2,2,2,2,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF, RISE
     nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF", "RISE"]
     next_nf   = [[["SMF",1],["AUSF",5]], [["AMF",0], ["UPF",2]], [["SMF",1]], [["UDR",4]], [["",-1]], [["UDM",3]],[["AMF", 0]]]
     req_type  = ["RegistrationRequest","AuthenticationResponse","SecurityModeComplete","IdentityResponse","RegistrationComplete","PDUSessionEstablishmentRequest"]
@@ -30,6 +30,7 @@ class GP:
     logOptional  = True
     logTopology  = True
     logRequest   = True
+    logObservation   = True
     @staticmethod
     def getLogInfo(log_prefix, line):
         return log_prefix +'-' +str(line) +'][RODC-DDPG]'
@@ -59,6 +60,11 @@ class GP:
                 log_debug.logger.debug(str % value)
             else:
                 log_debug.logger.debug(str)
+        if GP.logRequest and type is 'observation':
+            if value is not None:
+                log_data.logger.debug(str % value)
+            else:
+                log_data.logger.debug(str)
 
     # System Running
     obs_on_road = []
