@@ -4,7 +4,7 @@ log_prefix = '[' + os.path.basename(__file__)
 class GP:
     # System Parameters
     n_episode = 1
-    n_time_steps = 200
+    n_time_steps = 10
     delta_t   = 1
     @staticmethod
     def RESET(env, agent):
@@ -12,7 +12,7 @@ class GP:
         agent.reset()
 
     # System Model
-    n_UEs = 50
+    n_UEs = 20
     n_VM = 8 # number of VMs
     n_NF_inst = [2,2,2,2,2,2,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF, RISE
     nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF", "RISE"]
@@ -21,8 +21,8 @@ class GP:
     require_cpu_cycles = [[1000,0,0,1000,1000,1000,10], [1000,0,0,1000,10,1000,10],[1000,0,0,0,0,0,10],[1000,0,0,0,0,0,10],[1000,0,0,0,0,0,10],[1000,1000,1000,0,0,0,10]]
     msc       = [[6,0,5,3,4], [6,0,5,3,4], [6,0], [6,0], [6,0], [6,0,1,2]]
 
-    # rate in NF/VM
-    mu_RISE = 100
+    # rate in VM
+    mu_VM = 20
 
     # Log setting
     logDebugAvai = True
