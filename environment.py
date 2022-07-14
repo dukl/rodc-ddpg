@@ -73,17 +73,17 @@ class ENV:
                     if msg_to_nf.nf_id < 6 and len(msg_to_nf.msg_queue) + 1 > msg_to_nf.l_max:
                         req.is_reject = True
                         n_msg_reject += 1
-                        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[VM-%d sends REQ-%d-%s to NF-%d-%d-%s] - Reject (Overload)', (vm.id, req.type_id[0], req.type_id[1], msg_to_nf.nf_id, msg_to_nf.inst_id, msg_to_nf.type), 'request')
+                        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[VM-%d sends REQ-%d-%s-UE-%d to NF-%d-%d-%s] - Reject (Overload)', (vm.id, req.type_id[0], req.type_id[1], req.ue_id, msg_to_nf.nf_id, msg_to_nf.inst_id, msg_to_nf.type), 'request')
                     else:
                         msg_to_nf.msg_queue.append(req)
-                        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[VM-%d sends REQ-%d-%s to NF-%d-%d-%s] - Successfully', (vm.id, req.type_id[0], req.type_id[1], msg_to_nf.nf_id, msg_to_nf.inst_id, msg_to_nf.type), 'request')
+                        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[VM-%d sends REQ-%d-%s-UE-%d to NF-%d-%d-%s] - Successfully', (vm.id, req.type_id[0], req.type_id[1], req.ue_id, msg_to_nf.nf_id, msg_to_nf.inst_id, msg_to_nf.type), 'request')
             for nf in self.nfs:
                 for inst in nf:
                     req, cpu_left = inst.nf_processing[0], 0
                     if inst.nf_processing[0] is not None:
                         cpu_left = inst.C - inst.nf_processing[1]
                         if cpu_left > 0:
-                            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'NF-%d-%d-%d-%s is processed REQ-%d-%s (%d)', (inst.loc_id, inst.nf_id, inst.inst_id, inst.type, req.type_id[0], req.type_id[1], GP.require_cpu_cycles[req.type_id[0]][inst.nf_id]), 'request')
+                            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'NF-%d-%d-%d-%s is processed REQ-%d-%s-UE-%d (%d)', (inst.loc_id, inst.nf_id, inst.inst_id, inst.type, req.type_id[0], req.type_id[1], req.ue_id, GP.require_cpu_cycles[req.type_id[0]][inst.nf_id]), 'request')
                             self.send_msg_to_next_nf(inst, req)
                     else:
                         cpu_left = inst.C
@@ -92,23 +92,29 @@ class ENV:
                         del inst.msg_queue[0]
                         cpu_left -= GP.require_cpu_cycles[req.type_id[0]][inst.nf_id]
                         if cpu_left > 0:
-                            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'NF-%d-%d-%d-%s is processed REQ-%d-%s (%d)', (inst.loc_id, inst.nf_id, inst.inst_id, inst.type, req.type_id[0], req.type_id[1], GP.require_cpu_cycles[req.type_id[0]][inst.nf_id]), 'request')
+                            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'NF-%d-%d-%d-%s is processed REQ-%d-%s-UE-%d (%d)', (inst.loc_id, inst.nf_id, inst.inst_id, inst.type, req.type_id[0], req.type_id[1], req.ue_id, GP.require_cpu_cycles[req.type_id[0]][inst.nf_id]), 'request')
                             self.send_msg_to_next_nf(inst, req)
                     if cpu_left <= 0:
                         inst.nf_processing = [req, -cpu_left]
-                        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + 'NF-%d-%d-%d-%s is processing REQ-%d-%s (%d)', (inst.loc_id, inst.nf_id, inst.inst_id, inst.type, req.type_id[0], req.type_id[1], GP.require_cpu_cycles[req.type_id[0]][inst.nf_id]), 'request')
+                        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + 'NF-%d-%d-%d-%s is processing REQ-%d-%s-UE-%d (%d)', (inst.loc_id, inst.nf_id, inst.inst_id, inst.type, req.type_id[0], req.type_id[1], req.ue_id, GP.require_cpu_cycles[req.type_id[0]][inst.nf_id]), 'request')
 
             self.it_time += 0.01
         return n_msg_reject
 
     def send_msg_to_next_nf(self, inst, req):
         if req.cur_loc + 1 >= len(GP.msc[req.type_id[0]]):
+            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[REQ-%d-%s-UE-%d has been processed successfully]', (req.type_id[0], req.type_id[1], req.ue_id), 'request')
+            nf_rise = self.nfs[6]
+            idx = random.randint(0, len(nf_rise) - 1)
+            if req.type_id[0] + 1 >= 6:
+                GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[The whole procedure initiated by UE-%d has been processed successfully]',(req.ue_id), 'request')
+            else:
+                self.vms[self.nfs[6][idx].loc_id].msg_queue.append(REQ(req.ue_id, req.type_id[0]+1, nf_rise[idx].loc_id, 6, idx))
             return
         req.cur_loc += 1
         nnf_id = GP.msc[req.type_id[0]][req.cur_loc]
         lout, fwd_idx, index = None, 0, 0
         for i in range(len(GP.next_nf[inst.nf_id])):
-            print(GP.next_nf[inst.nf_id][i][1], nnf_id)
             if GP.next_nf[inst.nf_id][i][1] == nnf_id:
                 lout = inst.l_out[i]
                 fwd_idx = inst.fwd_idx[i]
@@ -123,10 +129,10 @@ class ENV:
         req.cur_state = [ninst.loc_id, ninst.nf_id, ninst.inst_id]
         if ninst.loc_id == inst.loc_id:
             ninst.msg_queue.append(req)
-            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + 'Send REQ-%d-%s from NF-%d-%d-%d-%s to NF-%d-%d-%d-%s \'s message queue',(req.type_id[0], req.type_id[1], inst.loc_id, inst.nf_id, inst.inst_id, inst.type, ninst.loc_id, ninst.nf_id, ninst.inst_id, ninst.type), 'request')
+            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + 'Send REQ-%d-%s-UE-%d from NF-%d-%d-%d-%s to NF-%d-%d-%d-%s \'s message queue',(req.type_id[0], req.type_id[1], req.ue_id, inst.loc_id, inst.nf_id, inst.inst_id, inst.type, ninst.loc_id, ninst.nf_id, ninst.inst_id, ninst.type), 'request')
         else:
             self.vms[ninst.loc_id].msg_queue.append(req)
-            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + 'Send REQ-%d-%s from NF-%d-%d-%d-%s to VM-%d \'s message queue hosting NF-%d-%d-%s',(req.type_id[0], req.type_id[1], inst.loc_id, inst.nf_id, inst.inst_id, inst.type, ninst.loc_id, ninst.nf_id, ninst.inst_id, ninst.type), 'request')
+            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + 'Send REQ-%d-%s-UE-%d from NF-%d-%d-%d-%s to VM-%d \'s message queue hosting NF-%d-%d-%s',(req.type_id[0], req.type_id[1], req.ue_id, inst.loc_id, inst.nf_id, inst.inst_id, inst.type, ninst.loc_id, ninst.nf_id, ninst.inst_id, ninst.type), 'request')
 
     def update_ue_reqs_every_time_step(self, n_msgs):
         nf_rise = self.nfs[6]

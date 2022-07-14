@@ -12,7 +12,7 @@ class GP:
         agent.reset()
 
     # System Model
-    n_UEs = 20
+    n_UEs = 50
     n_VM = 8 # number of VMs
     n_NF_inst = [2,2,2,2,2,2,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF
     nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF", "RISE"]
