@@ -165,8 +165,8 @@ class ENV:
         nf_rise = self.nfs[6]
         for i in range(n_msgs):
             index = random.randint(0, len(nf_rise)-1)
-            #req_idx = random.randint(0,len(GP.req_type)-1)
-            self.vms[self.nfs[6][index].loc_id].msg_queue.append(REQ(i+self.ue_index, 0, nf_rise[index].loc_id, 6, index))
+            req_idx = random.randint(0,len(GP.req_type)-1)
+            self.vms[self.nfs[6][index].loc_id].msg_queue.append(REQ(i+self.ue_index, req_idx, nf_rise[index].loc_id, 6, index))
         self.ue_index += n_msgs
         self.n_msg_req.append(n_msgs)
 
