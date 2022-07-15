@@ -46,11 +46,9 @@ class ENV:
                     nnf = self.nfs[inst.next_nf[i][1]]
                     for ninst in nnf:
                         if len(inst.l_out[i]) < len(nnf):
-                            print('test')
                             inst.l_out[i].append([ninst.loc_id, ninst.nf_id, ninst.inst_id, round(random.random(),3) + 0.001, 0, 0]) # location, nf, instance, f(l), total, forwarding times
                     for item in inst.l_out[i]:
                         item[3] = round(random.random(),3) + 0.001
-                        print('test', item[3])
                     max = 0
                     for lo in inst.l_out[i]:
                         if lo[3] > max:
@@ -80,6 +78,7 @@ class ENV:
         n_msg_reject = 0
         for nf in self.nfs:
             for inst in nf:
+                inst.C = random.random()*30000 + 10000
                 inst.C_ = inst.C
         while self.it_time < next_t:
             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Time Point: %f]', (self.it_time), 'request')
@@ -135,7 +134,7 @@ class ENV:
             if req.type_id[0] + 1 >= 6:
                 GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[The whole procedure initiated by UE-%d has been processed successfully]',(req.ue_id), 'request')
             else:
-                self.vms[self.nfs[6][idx].loc_id].msg_queue.append(REQ(req.ue_id, req.type_id[0]+1, nf_rise[idx].loc_id, 6, idx))
+                self.vms[self.nfs[6][idx].loc_id].msg_queue.insert(0, REQ(req.ue_id, req.type_id[0]+1, nf_rise[idx].loc_id, 6, idx))
                 GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[Trigger REQ-%d-%s-%d-UE-%d sending to RISE]', (req.type_id[0]+1, GP.req_type[req.type_id[0]+1], req.cur_loc, req.ue_id), 'request')
             return
         req.cur_loc += 1
