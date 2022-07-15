@@ -4,7 +4,7 @@ log_prefix = '[' + os.path.basename(__file__)
 class GP:
     # System Parameters
     n_episode = 1
-    n_time_steps = 10
+    n_time_steps = 100
     delta_t   = 1
     @staticmethod
     def RESET(env, agent):
@@ -12,17 +12,17 @@ class GP:
         agent.reset()
 
     # System Model
-    n_UEs = 20
+    n_UEs = 300
     n_VM = 8 # number of VMs
-    n_NF_inst = [2,2,2,2,2,2,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF, RISE
+    n_NF_inst = [2,1,1,1,1,1,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF, RISE
     nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF", "RISE"]
     next_nf   = [[["SMF",1],["AUSF",5]], [["AMF",0], ["UPF",2]], [["SMF",1]], [["UDR",4]], [["",-1]], [["UDM",3]],[["AMF", 0]]]
     req_type  = ["RegistrationRequest","AuthenticationResponse","SecurityModeComplete","IdentityResponse","RegistrationComplete","PDUSessionEstablishmentRequest"]
-    require_cpu_cycles = [[1000,0,0,1000,1000,1000,10], [1000,0,0,1000,10,1000,10],[1000,0,0,0,0,0,10],[1000,0,0,0,0,0,10],[1000,0,0,0,0,0,10],[1000,1000,1000,0,0,0,10]]
+    require_cpu_cycles = [[1200,0,0,2000,500,1500,10], [1000,0,0,800,10,850,10],[1000,0,0,0,0,0,10],[1000,0,0,0,0,0,10],[1000,0,0,0,0,0,10],[1200,2000,2500,0,0,0,10]]
     msc       = [[6,0,5,3,4], [6,0,5,3,4], [6,0], [6,0], [6,0], [6,0,1,2]]
 
     # rate in VM
-    mu_VM = 20
+    mu_VM = 1
 
     # Log setting
     logDebugAvai = True
