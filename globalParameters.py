@@ -4,7 +4,7 @@ log_prefix = '[' + os.path.basename(__file__)
 class GP:
     # System Parameters
     n_episode = 1
-    n_time_steps = 5
+    n_time_steps = 10
     delta_t   = 1
     @staticmethod
     def RESET(env, agent):
@@ -12,9 +12,9 @@ class GP:
         agent.reset()
 
     # System Model
-    n_UEs = 300
+    n_UEs = 30
     n_VM = 8 # number of VMs
-    n_NF_inst = [2,1,1,1,1,1,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF, RISE
+    n_NF_inst = [5,5,5,5,5,5,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF, RISE
     nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF", "RISE"]
     next_nf   = [[["SMF",1],["AUSF",5]], [["AMF",0], ["UPF",2]], [["SMF",1]], [["UDR",4]], [["",-1]], [["UDM",3]],[["AMF", 0]]]
     req_type  = ["RegistrationRequest","AuthenticationResponse","SecurityModeComplete","IdentityResponse","RegistrationComplete","PDUSessionEstablishmentRequest"]

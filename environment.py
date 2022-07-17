@@ -23,6 +23,7 @@ class ENV:
         self.n_successful_procedure = 0
         self.n_failure_procedure    = 0
         self.procedure_service_time = []
+        self.episode_reward = []
 
     def initial_topology(self):
         for i in range(GP.n_VM):
@@ -51,19 +52,20 @@ class ENV:
                     for ninst in nnf:
                         if len(inst.l_out[i]) < len(nnf):
                             inst.l_out[i].append([ninst.loc_id, ninst.nf_id, ninst.inst_id, round(random.random(),3) + 0.001, 0, 0]) # location, nf, instance, f(l), total, forwarding times
-                    for item in inst.l_out[i]:
-                        item[3] = round(random.random(),3) + 0.001
+                    #for item in inst.l_out[i]:
+                    #    item[3] = round(random.random(),3) + 0.001
                     max = 0
                     for lo in inst.l_out[i]:
                         if lo[3] > max:
                             max = lo[3]
                     for lo in inst.l_out[i]:
-                        lo[4] = int(5/max*lo[3])
+                        lo[4] = int(10/max*lo[3])
                         log_tmp += 'inst(' + str(lo[0]) + ',' + str(lo[1]) + ',' + str(lo[2]) + ',' + str(lo[3]) + ',' + str(lo[4]) + ',' + str(lo[5]) + ')'
-                GP.LOG(log_tmp, None, 'topology')
+                GP.LOG(log_tmp, None, 'data')
 
     def execute_action(self, action):
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-24][env executes a[%d]]',(action.id),'data')
+        self.reset()
         n_msg_reject = self.running(action.id + GP.delta_t)
         self.n_msg_reject.append(n_msg_reject)
 
@@ -133,15 +135,17 @@ class ENV:
                             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + 'NF-%d-%d-%d-%s is processing REQ-%d-%s-%d-UE-%d (%d)', (inst.loc_id, inst.nf_id, inst.inst_id, inst.type, req.type_id[0], req.type_id[1], req.cur_loc, req.ue_id, GP.require_cpu_cycles[req.type_id[0]][inst.nf_id]), 'request')
             self.send_obs_reward(1)
             self.it_time += 0.01
-        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'At time %d~%d, %d REQs are processing, %d REQs are successfully processed (average service time %f)', (next_t-1, next_t, self.n_msg_req[-1], self.msg_service_time[-1][1], self.msg_service_time[-1][0]/self.msg_service_time[-1][1]), 'data')
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'At time %d~%d, %d REQs are processing, %d REQs are successfully processed (average service time %f), %d REQs are reject; Reward: %f', (next_t-1, next_t, self.n_msg_req[-1], self.msg_service_time[-1][1], self.msg_service_time[-1][0]/self.msg_service_time[-1][1], self.n_msg_reject[-1], (self.msg_service_time[-1][1]/self.n_msg_req[-1])/(self.msg_service_time[-1][0]/self.msg_service_time[-1][1])), 'data')
+        self.episode_reward[-1] += (self.msg_service_time[-1][1]/self.n_msg_req[-1])/(self.msg_service_time[-1][0]/self.msg_service_time[-1][1])
         return n_msg_reject
 
     def send_msg_to_next_nf(self, inst, req, it_time):
         if req.cur_loc + 1 >= len(GP.msc[req.type_id[0]]):
             req.end_time = it_time
-            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[REQ-%d-%s-%d-UE-%d has been processed successfully: service time (%f - %f = %f)]', (req.type_id[0], req.type_id[1], req.cur_loc, req.ue_id, req.end_time, req.start_time, req.end_time-req.start_time), 'data')
-            self.msg_service_time[-1][0] += req.end_time - req.start_time
-            self.msg_service_time[-1][1] += 1
+            if int(req.start_time) == int(req.end_time):
+                GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[REQ-%d-%s-%d-UE-%d has been processed successfully: service time (%f - %f = %f)]', (req.type_id[0], req.type_id[1], req.cur_loc, req.ue_id, req.end_time, req.start_time, req.end_time-req.start_time), 'data')
+                self.msg_service_time[-1][0] += req.end_time - req.start_time + 0.01
+                self.msg_service_time[-1][1] += 1
             nf_rise = self.nfs[6]
             idx = random.randint(0, len(nf_rise) - 1)
             if req.type_id[0] + 1 >= 6:
@@ -169,8 +173,9 @@ class ENV:
         req.cur_state = [ninst.loc_id, ninst.nf_id, ninst.inst_id]
         if ninst.loc_id == inst.loc_id:
             if ninst.nf_id < 6 and len(ninst.msg_queue) + 1 > ninst.l_max:
-                self.n_msg_reject[-1] += 1
-                GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[VM-%d sends REQ-%d-%s-%d-UE-%d to NF-%d-%d-%s] - Reject (Overload)', (ninst.loc_id, req.type_id[0], req.type_id[1], req.cur_loc, req.ue_id, ninst.nf_id, ninst.inst_id, ninst.type), 'data')
+                if int(it_time) == int(req.start_time):
+                    self.n_msg_reject[-1] += 1
+                    GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[VM-%d sends REQ-%d-%s-%d-UE-%d to NF-%d-%d-%s] - Reject (Overload) - Start-Time: %f', (ninst.loc_id, req.type_id[0], req.type_id[1], req.cur_loc, req.ue_id, ninst.nf_id, ninst.inst_id, ninst.type, req.start_time), 'data')
 
             else:
                 ninst.msg_queue.append(req)
@@ -202,9 +207,9 @@ class NF:
     def __init__(self, type, loc_id, nf_id, inst_id):
         self.type      = type # AMF, SMF, UPF, UDM, UDR, AUSF
         self.loc_id  = loc_id  # located on which VM
-        self.l_max     = 1000  # current maximum length of queue caused by dynamics
+        self.l_max     = 100  # current maximum length of queue caused by dynamics
         self.msg_queue = [] # request signaling messages
-        self.C         = random.random()*200000 + 100000  # current CPU cycles
+        self.C         = 20000  # current CPU cycles
         self.C_        = self.C
         self.nf_id     = nf_id
         self.inst_id   = inst_id
