@@ -108,7 +108,7 @@ class ENV:
                             if vm.id == rise.loc_id:
                                 req.start_time = self.it_time
                         msg_to_nf = self.nfs[req.cur_state[1]][req.cur_state[2]]
-                        if msg_to_nf.nf_id < 6 and len(msg_to_nf.msg_queue) + 1 > msg_to_nf.l_max:
+                        if msg_to_nf.nf_id < 6 and len(msg_to_nf.msg_queue) + 1 > msg_to_nf.l_max and req.type_id[0] >= 0:
                             req.is_reject = True
                             n_msg_reject += 1
                             self.n_msg_reject[-1] += 1
@@ -146,7 +146,7 @@ class ENV:
             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'At time %f~%f, %d REQs are processing, %d REQs are successfully processed (average service time %f), %d REQs are reject; Reward: %f', (next_t-GP.delta_t, next_t, self.n_msg_req[-1], self.msg_service_time[-1][1], self.msg_service_time[-1][0]/self.msg_service_time[-1][1], self.n_msg_reject[-1], (self.msg_service_time[-1][1]/self.n_msg_req[-1])/(self.msg_service_time[-1][0]/self.msg_service_time[-1][1])), 'data')
             self.episode_reward[-1] += (self.msg_service_time[-1][1]/self.n_msg_req[-1])/(self.msg_service_time[-1][0]/self.msg_service_time[-1][1])
         else:
-            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'At time %d~%d, %d REQs are processing, %d REQs are successfully processed', (next_t-GP.delta_t, next_t, self.n_msg_req[-1], self.msg_service_time[-1][1]), 'data')
+            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'At time %f~%f, %d REQs are processing, %d REQs are successfully processed, %d REQs are reject;', (next_t-GP.delta_t, next_t, self.n_msg_req[-1], self.msg_service_time[-1][1], self.n_msg_reject[-1]), 'data')
         return n_msg_reject
 
     def send_msg_to_next_nf(self, inst, req, it_time):
