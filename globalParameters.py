@@ -5,14 +5,14 @@ class GP:
     # System Parameters
     n_episode = 1
     n_time_steps = 10
-    delta_t   = 1
+    delta_t   = 2
     @staticmethod
     def RESET(env, agent):
         env.reset()
         agent.reset()
 
     # System Model
-    n_UEs = 30
+    n_UEs = 300
     n_VM = 8 # number of VMs
     n_NF_inst = [5,5,5,5,5,5,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF, RISE
     nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF", "RISE"]
