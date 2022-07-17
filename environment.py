@@ -93,15 +93,11 @@ class ENV:
         for nf in self.nfs:
             for inst in nf:
                 self.n_msg_req[-1] += len(inst.msg_queue)
+                inst.C_ = GP.nf_cpu_dynamics_sin[int(inst.dynamics_idx + (next_t - GP.delta_t)/0.01)]
+                inst.history_cpu_per_ts.append(inst.C_)
+                GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + 'time %f-%f, inst-%d-%d-%d has %d CPU cycles', (next_t-GP.delta_t, next_t, inst.loc_id, inst.nf_id, inst.inst_id, inst.C_), 'data')
 
         while self.it_time < next_t:
-            if int(self.it_time) == self.old_it_time + 1:
-                self.old_it_time = int(self.it_time)
-                for nf in self.nfs:
-                    for inst in nf:
-                        # inst.C = random.random()*30000 + 10000
-                        inst.C_ = inst.C
-
             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Time Point: %f]', (self.it_time), 'data')
             for vm in self.vms:
                 for i in range(GP.mu_VM):
@@ -147,7 +143,7 @@ class ENV:
             self.send_obs_reward(1)
             self.it_time += 0.01
         if self.msg_service_time[-1][1] != 0:
-            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'At time %d~%d, %d REQs are processing, %d REQs are successfully processed (average service time %f), %d REQs are reject; Reward: %f', (next_t-GP.delta_t, next_t, self.n_msg_req[-1], self.msg_service_time[-1][1], self.msg_service_time[-1][0]/self.msg_service_time[-1][1], self.n_msg_reject[-1], (self.msg_service_time[-1][1]/self.n_msg_req[-1])/(self.msg_service_time[-1][0]/self.msg_service_time[-1][1])), 'data')
+            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'At time %f~%f, %d REQs are processing, %d REQs are successfully processed (average service time %f), %d REQs are reject; Reward: %f', (next_t-GP.delta_t, next_t, self.n_msg_req[-1], self.msg_service_time[-1][1], self.msg_service_time[-1][0]/self.msg_service_time[-1][1], self.n_msg_reject[-1], (self.msg_service_time[-1][1]/self.n_msg_req[-1])/(self.msg_service_time[-1][0]/self.msg_service_time[-1][1])), 'data')
             self.episode_reward[-1] += (self.msg_service_time[-1][1]/self.n_msg_req[-1])/(self.msg_service_time[-1][0]/self.msg_service_time[-1][1])
         else:
             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'At time %d~%d, %d REQs are processing, %d REQs are successfully processed', (next_t-GP.delta_t, next_t, self.n_msg_req[-1], self.msg_service_time[-1][1]), 'data')
@@ -229,7 +225,7 @@ class NF:
         self.l_max     = 100  # current maximum length of queue caused by dynamics
         self.msg_queue = [] # request signaling messages
         #self.C         = random.random()*20000 + 10000  # current CPU cycles
-        self.C         = 20000
+        self.C         = GP.CPU
         self.C_        = self.C
         self.nf_id     = nf_id
         self.inst_id   = inst_id
@@ -237,6 +233,8 @@ class NF:
         self.l_out     = [[] for _ in range(len(self.next_nf))]  # link out to which instances
         self.fwd_idx   = [0 for _ in range(len(self.next_nf))] # forwarding index
         self.nf_processing = [None,0]
+        self.dynamics_idx  = random.randint(100,600)
+        self.history_cpu_per_ts = []
 
 class REQ:
     def __init__(self, ue_id, type_id, loc_id, nf_id, inst_id):

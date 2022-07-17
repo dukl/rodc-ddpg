@@ -2,6 +2,8 @@ from environment import ENV
 from agent import Agent
 from globalParameters import GP
 from scipy import stats
+import numpy as np
+import matplotlib.pyplot as plt
 
 import os,sys
 log_prefix = '[' + os.path.basename(__file__)
@@ -31,5 +33,15 @@ if __name__ == '__main__':
             if ue.end_time != 0:
                 n_ue_succ += 1
                 average_service_time += ue.end_time - ue.start_time
-        average_service_time = average_service_time/n_ue_succ
-        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'Episode-%d, complete procedure rate (%d / %d = %f), average_service_time = %f, evaluation_value = %f', (ep, n_ue_succ, len(env.ues), n_ue_succ/len(env.ues), average_service_time, (n_ue_succ/len(env.ues))/average_service_time), 'data')
+        if n_ue_succ != 0:
+            average_service_time = average_service_time/n_ue_succ
+            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'Episode-%d, complete procedure rate (%d / %d = %f), average_service_time = %f, evaluation_value = %f', (ep, n_ue_succ, len(env.ues), n_ue_succ/len(env.ues), average_service_time, (n_ue_succ/len(env.ues))/average_service_time), 'data')
+        cpu_hist = []
+        for nf in env.nfs:
+            for inst in nf:
+                cpu_hist.append(inst.history_cpu_per_ts)
+        np_cpu_hist = np.array(cpu_hist)
+        for cpu in np_cpu_hist:
+            plt.plot([i for i in range(GP.n_time_steps)], cpu)
+        #plt.show()
+        plt.savefig('cpu dynamics '+str(GP.nf_cpu_change_rate_sin)+'.png')

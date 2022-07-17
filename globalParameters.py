@@ -1,20 +1,23 @@
+import numpy as np
 from logger import log_debug,log_data
-import os, sys
+import os, sys, math
 log_prefix = '[' + os.path.basename(__file__)
 class GP:
     # System Parameters
     n_episode = 1
     n_time_steps = 10
-    delta_t   = 2
+    delta_t   = 0.5
     @staticmethod
     def RESET(env, agent):
         env.reset()
         agent.reset()
+        GP.generate_dynamics_sin()
 
     # System Model
+    CPU = 200000
     n_UEs = 300
     n_VM = 8 # number of VMs
-    n_NF_inst = [5,5,5,5,5,5,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF, RISE
+    n_NF_inst = [1,1,1,1,1,1,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF, RISE
     nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF", "RISE"]
     next_nf   = [[["SMF",1],["AUSF",5]], [["AMF",0], ["UPF",2]], [["SMF",1]], [["UDR",4]], [["",-1]], [["UDM",3]],[["AMF", 0]]]
     req_type  = ["RegistrationRequest","AuthenticationResponse","SecurityModeComplete","IdentityResponse","RegistrationComplete","PDUSessionEstablishmentRequest"]
@@ -81,4 +84,12 @@ class GP:
             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[agent receives observation s[%d] at time %d]', (ob.id, ts), 'data')
             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-13][received observation s[%d]]', ob.id, 'optional')
         return O
+
+    # Dynamics simulation
+    nf_cpu_change_rate_sin = 1
+    nf_cpu_dynamics_sin = None
+    @staticmethod
+    def generate_dynamics_sin():
+        x = np.arange(0, 3*GP.n_time_steps*GP.delta_t, 0.01)
+        GP.nf_cpu_dynamics_sin = np.sin(GP.nf_cpu_change_rate_sin * x) * GP.CPU * GP.delta_t + GP.CPU * GP.delta_t
 
