@@ -51,11 +51,13 @@ class ENV:
                 log_tmp = GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[Reset Signaling Traffic Mapping] inst(' + str(inst.loc_id) + ',' + str(inst.nf_id) + ',' + str(inst.inst_id) + ')--mapping-->\n'
                 for i in range(len(inst.next_nf)):
                     nnf = self.nfs[inst.next_nf[i][1]]
+                    sum = 0
                     for ninst in nnf:
+                        sum += ninst.C_
                         if len(inst.l_out[i]) < len(nnf):
                             inst.l_out[i].append([ninst.loc_id, ninst.nf_id, ninst.inst_id, 1/len(nnf), 0, 0]) # location, nf, instance, f(l), total, forwarding times
-                    #for item in inst.l_out[i]:
-                    #    item[3] = round(random.random(),3) + 0.001
+                    for j in range(len(inst.l_out[i])):
+                        inst.l_out[i][j][3] = nnf[j].C_/sum
                     max = 0
                     for lo in inst.l_out[i]:
                         if lo[3] > max:
@@ -89,13 +91,19 @@ class ENV:
         self.msg_service_time.append([0,0])
 
         for vm in self.vms:
-            self.n_msg_req[-1] += len(vm.msg_queue)
+            for msg in vm.msg_queue:
+                if msg.ue_id >= 0:
+                    self.n_msg_req[-1] += 1
+            n_cloud_services = random.randint(0,int(0.2*GP.mu_VM/0.01))
+            for i in range(n_cloud_services):
+                vm.msg_queue.append(REQ(-1, -1, vm.id, -1, -1))
         for nf in self.nfs:
             for inst in nf:
                 self.n_msg_req[-1] += len(inst.msg_queue)
                 inst.C_ = GP.nf_cpu_dynamics_sin[int(inst.dynamics_idx + (next_t - GP.delta_t)/0.01)]
                 inst.history_cpu_per_ts.append(inst.C_)
                 GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + 'time %f-%f, inst-%d-%d-%d has %d CPU cycles', (next_t-GP.delta_t, next_t, inst.loc_id, inst.nf_id, inst.inst_id, inst.C_), 'data')
+        self.reset()
 
         while self.it_time < next_t:
             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Time Point: %f]', (self.it_time), 'data')
@@ -104,11 +112,14 @@ class ENV:
                     if len(vm.msg_queue) > 0:
                         req = vm.msg_queue[0]
                         del vm.msg_queue[0]
+                        if req.ue_id < 0:
+                            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Other Cloud Services in VM-%d]  -----> discard',(vm.id), 'data')
+                            continue
                         for rise in self.nfs[6]:
                             if vm.id == rise.loc_id:
                                 req.start_time = self.it_time
                         msg_to_nf = self.nfs[req.cur_state[1]][req.cur_state[2]]
-                        if msg_to_nf.nf_id < 6 and len(msg_to_nf.msg_queue) + 1 > msg_to_nf.l_max and req.type_id[0] >= 0:
+                        if msg_to_nf.nf_id < 6 and len(msg_to_nf.msg_queue) + 1 > msg_to_nf.l_max:
                             req.is_reject = True
                             n_msg_reject += 1
                             self.n_msg_reject[-1] += 1
@@ -152,17 +163,17 @@ class ENV:
     def send_msg_to_next_nf(self, inst, req, it_time):
         if req.cur_loc + 1 >= len(GP.msc[req.type_id[0]]):
             req.end_time = it_time
-            if int(req.end_time) - int(req.start_time) < GP.delta_t:
-                GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[REQ-%d-%s-%d-UE-%d has been processed successfully: service time (%f - %f = %f)]', (req.type_id[0], req.type_id[1], req.cur_loc, req.ue_id, req.end_time, req.start_time, req.end_time-req.start_time), 'data')
-                self.msg_service_time[-1][0] += req.end_time - req.start_time + 0.01
-                self.msg_service_time[-1][1] += 1
-                self.n_msg_req[-1] += 1
+            #if int(req.end_time) - int(req.start_time) < GP.delta_t:
+            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[REQ-%d-%s-%d-UE-%d has been processed successfully: service time (%f - %f = %f)]', (req.type_id[0], req.type_id[1], req.cur_loc, req.ue_id, req.end_time, req.start_time, req.end_time-req.start_time), 'data')
+            self.msg_service_time[-1][0] += req.end_time - req.start_time + 0.01
+            self.msg_service_time[-1][1] += 1
             nf_rise = self.nfs[6]
             idx = random.randint(0, len(nf_rise) - 1)
             if req.type_id[0] + 1 >= 6:
                 GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[The whole procedure initiated by UE-%d has been processed successfully]',(req.ue_id), 'request')
                 self.ues[req.ue_id].end_time = it_time
             else:
+                self.n_msg_req[-1] += 1
                 self.vms[self.nfs[6][idx].loc_id].msg_queue.insert(0, REQ(req.ue_id, req.type_id[0]+1, nf_rise[idx].loc_id, 6, idx))
                 GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[Trigger REQ-%d-%s-%d-UE-%d sending to RISE]', (req.type_id[0]+1, GP.req_type[req.type_id[0]+1], req.cur_loc, req.ue_id), 'request')
             return
@@ -185,9 +196,9 @@ class ENV:
         req.cur_state = [ninst.loc_id, ninst.nf_id, ninst.inst_id]
         if ninst.loc_id == inst.loc_id:
             if ninst.nf_id < 6 and len(ninst.msg_queue) + 1 > ninst.l_max:
-                if int(req.end_time) - int(req.start_time) < GP.delta_t:
-                    self.n_msg_reject[-1] += 1
-                    GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[VM-%d sends REQ-%d-%s-%d-UE-%d to NF-%d-%d-%s] - Reject (Overload) - Start-Time: %f', (ninst.loc_id, req.type_id[0], req.type_id[1], req.cur_loc, req.ue_id, ninst.nf_id, ninst.inst_id, ninst.type, req.start_time), 'data')
+                #if int(req.end_time) - int(req.start_time) < GP.delta_t:
+                self.n_msg_reject[-1] += 1
+                GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[VM-%d sends REQ-%d-%s-%d-UE-%d to NF-%d-%d-%s] - Reject (Overload) - Start-Time: %f', (ninst.loc_id, req.type_id[0], req.type_id[1], req.cur_loc, req.ue_id, ninst.nf_id, ninst.inst_id, ninst.type, req.start_time), 'data')
 
             else:
                 ninst.msg_queue.append(req)
@@ -248,7 +259,11 @@ class REQ:
         self.cur_loc       = 0
         self.start_time    = 0
         self.end_time      = 0
-        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[newly generated REQ: %d, %d-%s]', (self.ue_id, self.type_id[0], self.type_id[1]),'request')
+        if self.ue_id >= 0:
+            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[newly generated REQ: %d, %d-%s]', (self.ue_id, self.type_id[0], self.type_id[1]),'request')
+        else:
+            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[newly generated Cloud Services]', None,'request')
+
 
 class UE:
     def __init__(self, id, it_time):
