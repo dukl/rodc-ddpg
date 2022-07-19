@@ -4,6 +4,7 @@ from observation_reward import OBSRWD
 from forwardModel import FM
 from ddpg import DDPG
 import os,sys
+import numpy as np
 log_prefix = '[' + os.path.basename(__file__)
 
 class Agent:
@@ -14,7 +15,7 @@ class Agent:
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-4][Initialize Forward Model]', None, 'optional')
         self.A, self.A_avai = [], []  # RODC-DDPG line-5
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-5][Initialize the action buffer len(A)=%d and len(A_avai)=%d]',(len(self.A),len(self.A_avai)),'optional')
-        self.sc = OBSRWD(-1)  # latest observation RODC-DDPG Line-6
+        self.sc = OBSRWD(-1, 0, -1)  # latest observation RODC-DDPG Line-6
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-6][Initialize the latest observation sc randomly id(sc)=%d ]', (self.sc.id), 'optional')
         self.T = [[] for _ in range(2)]
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-8][Initialize the raw trajectory T for actions: len(T[0])=%d]', (len(self.T[0])), 'optional')
@@ -81,3 +82,12 @@ class Agent:
                 self.T[1].remove(ele)
                 GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[line-29][agent removes elements s[%d] from T: len(T[0])=%d, len(T[1])=%d]', (ele.id, len(self.T[0]), len(self.T[1])), 'optional')
         return action
+
+    def receive_observation_no_delay(self, obs, ts):
+        s = np.array(obs[0].value).reshape(1, 13 * 4)
+        act_value = self.ddpg.act(s)
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Generated action: a[%d]=%s]',(ts, str(act_value[0])), 'data')
+        self.ddpg.remember(s, act_value[0], float(obs[0].reward))
+        self.ddpg.train()
+        self.ddpg.update_target()
+        return ACT(ts, act_value[0])

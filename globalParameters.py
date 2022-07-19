@@ -5,7 +5,7 @@ log_prefix = '[' + os.path.basename(__file__)
 class GP:
     # System Parameters
     n_episode = 1
-    n_time_steps = 100
+    n_time_steps = 3
     delta_t   = 1
     @staticmethod
     def RESET(env, agent):
@@ -23,6 +23,20 @@ class GP:
     req_type  = ["RegistrationRequest","AuthenticationResponse","SecurityModeComplete","IdentityResponse","RegistrationComplete","PDUSessionEstablishmentRequest"]
     require_cpu_cycles = [[1200,0,0,2000,500,1500,10], [1000,0,0,800,10,850,10],[1000,0,0,0,0,0,10],[1000,0,0,0,0,0,10],[1000,0,0,0,0,0,10],[1200,2000,2500,0,0,0,10]]
     msc       = [[6,0,5,3,4], [6,0,5,3,4], [6,0], [6,0], [6,0], [6,0,1,2]]
+    @staticmethod
+    def get_dim_action_state():
+        state_dim, act_dim = 0, 0
+        for num in GP.n_NF_inst:
+            state_dim += num
+        state_dim *= 4
+        for i in range(len(GP.nf_name)):
+            for nnf in GP.next_nf[i]:
+                if nnf[1] == -1:
+                    continue
+                act_dim += GP.n_NF_inst[i]*GP.n_NF_inst[nnf[1]]
+
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[state_dim = %d, action_dim = %d]', (state_dim, act_dim), 'optional')
+        return state_dim, act_dim
 
     # rate in VM
     mu_VM = 1

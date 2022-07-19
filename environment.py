@@ -1,6 +1,7 @@
 from globalParameters import GP
 from observation_reward import OBSRWD
 import random
+import numpy as np
 
 import os, sys
 log_prefix = '[' + os.path.basename(__file__)
@@ -25,6 +26,7 @@ class ENV:
         self.n_failure_procedure    = 0
         self.procedure_service_time = []
         self.episode_reward = []
+        self.action_reward = -1
         self.old_it_time = 0
 
     def initial_topology(self):
@@ -50,6 +52,8 @@ class ENV:
             for inst in nf:
                 log_tmp = GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[Reset Signaling Traffic Mapping] inst(' + str(inst.loc_id) + ',' + str(inst.nf_id) + ',' + str(inst.inst_id) + ')--mapping-->\n'
                 for i in range(len(inst.next_nf)):
+                    if inst.next_nf[i][1] == -1:
+                        continue
                     nnf = self.nfs[inst.next_nf[i][1]]
                     sum = 0
                     for ninst in nnf:
@@ -74,17 +78,23 @@ class ENV:
         self.n_msg_reject.append(n_msg_reject)
 
     def send_obs_reward(self, ts):
-        obs = OBSRWD(ts)
-        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-12][env sends s[%d], delay=%f]', (obs.id, obs.n_ts), 'optional')
-        GP.LOG('\n'+ GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[line-12][env sends s[%d], delay=%f]', (obs.id, obs.n_ts), 'optional')
-        s = [[] for _ in range(self.n_nf_inst)]
+        s = []
         for nf in self.nfs:
             for inst in nf:
                 s.append([inst.loc_id, len(self.vms[inst.loc_id].msg_queue), len(inst.msg_queue), inst.C])
                 GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '(%d,%d,%d)[%d, %d, %d, %d]', (inst.loc_id, inst.nf_id, inst.inst_id, inst.loc_id, len(self.vms[inst.loc_id].msg_queue), len(inst.msg_queue), inst.C), 'optional')
+        tmp = np.array(s).reshape(1, len(s)*4)[0]
+        _range = np.max(tmp) - np.min(tmp)
+        norm_s = (tmp - np.min(tmp))/_range
+        norm_s[norm_s==0] = 0.001
+        obs = OBSRWD(ts, norm_s, self.action_reward)
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[line-12][env sends s[%d]=%s, reward=%f delay=%f]\n', (obs.id, str(norm_s), self.action_reward, obs.n_ts), 'optional')
+        #GP.LOG('\n' + GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[line-12][env sends s[%d], delay=%f]', (obs.id, obs.n_ts), 'optional')
         return obs
 
+
     def running(self, next_t):
+        self.action_reward = -1
         n_msg_reject = 0
         self.n_msg_req.append(0)
         self.n_msg_reject.append(0)
@@ -102,8 +112,8 @@ class ENV:
                 self.n_msg_req[-1] += len(inst.msg_queue)
                 inst.C_ = GP.nf_cpu_dynamics_sin[int(inst.dynamics_idx + (next_t - GP.delta_t)/0.01)]
                 inst.history_cpu_per_ts.append(inst.C_)
+                inst.C = inst.C_
                 GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + 'time %f-%f, inst-%d-%d-%d has %d CPU cycles', (next_t-GP.delta_t, next_t, inst.loc_id, inst.nf_id, inst.inst_id, inst.C_), 'data')
-        self.reset()
 
         while self.it_time < next_t:
             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Time Point: %f]', (self.it_time), 'data')
@@ -151,11 +161,11 @@ class ENV:
                         inst.nf_processing = [req, -inst.C_]
                         if req is not None:
                             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + 'NF-%d-%d-%d-%s is processing REQ-%d-%s-%d-UE-%d (%d)', (inst.loc_id, inst.nf_id, inst.inst_id, inst.type, req.type_id[0], req.type_id[1], req.cur_loc, req.ue_id, GP.require_cpu_cycles[req.type_id[0]][inst.nf_id]), 'request')
-            self.send_obs_reward(1)
             self.it_time += 0.01
         if self.msg_service_time[-1][1] != 0:
             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'At time %f~%f, %d REQs are processing, %d REQs are successfully processed (average service time %f), %d REQs are reject; Reward: %f', (next_t-GP.delta_t, next_t, self.n_msg_req[-1], self.msg_service_time[-1][1], self.msg_service_time[-1][0]/self.msg_service_time[-1][1], self.n_msg_reject[-1], (self.msg_service_time[-1][1]/self.n_msg_req[-1])/(self.msg_service_time[-1][0]/self.msg_service_time[-1][1])), 'data')
             self.episode_reward[-1] += (self.msg_service_time[-1][1]/self.n_msg_req[-1])/(self.msg_service_time[-1][0]/self.msg_service_time[-1][1])
+            self.action_reward = (self.msg_service_time[-1][1]/self.n_msg_req[-1])/(self.msg_service_time[-1][0]/self.msg_service_time[-1][1])
         else:
             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'At time %f~%f, %d REQs are processing, %d REQs are successfully processed, %d REQs are reject;', (next_t-GP.delta_t, next_t, self.n_msg_req[-1], self.msg_service_time[-1][1], self.n_msg_reject[-1]), 'data')
         return n_msg_reject
