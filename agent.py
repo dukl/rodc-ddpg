@@ -1,3 +1,5 @@
+import random
+
 from globalParameters import GP
 from actions import ACT
 from observation_reward import OBSRWD
@@ -92,3 +94,11 @@ class Agent:
         self.ddpg.train()
         self.ddpg.update_target()
         return ACT(ts, act_value[0])
+
+    def receive_observation_delay_ddpg(self, obs, ts):
+        if len(obs) == 0:
+            _, act_dim = GP.get_dim_action_state()
+            act_value = np.random.rand(act_dim)
+            return ACT(ts, act_value)
+        else:
+            return self.receive_observation_no_delay(obs, ts)
