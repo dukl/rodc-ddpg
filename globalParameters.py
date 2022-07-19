@@ -5,7 +5,7 @@ log_prefix = '[' + os.path.basename(__file__)
 class GP:
     # System Parameters
     n_episode = 2
-    n_time_steps = 10
+    n_time_steps = 100
     delta_t   = 1
     @staticmethod
     def RESET(env, agent):
