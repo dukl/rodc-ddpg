@@ -33,10 +33,13 @@ class Logger(object):
 
 logDebug = 'debug.log'
 logData= 'data.log'
+logProcd = 'procedure.log'
 os.remove(logDebug)
 os.remove(logData)
+os.remove(logProcd)
 log_debug = Logger(logDebug, level='debug')
 log_data = Logger(logData, level='debug')
+log_procd = Logger(logProcd, level='debug')
 
 
 #if __name__ == '__main__':

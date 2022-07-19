@@ -84,7 +84,8 @@ class Agent:
         return action
 
     def receive_observation_no_delay(self, obs, ts):
-        s = np.array(obs[0].value).reshape(1, 13 * 4)
+        state_dim, _ = GP.get_dim_action_state()
+        s = np.array(obs[0].value).reshape(1, state_dim)
         act_value = self.ddpg.act(s)
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Generated action: a[%d]=%s]',(ts, str(act_value[0])), 'data')
         self.ddpg.remember(s, act_value[0], float(obs[0].reward))

@@ -1,11 +1,11 @@
 import numpy as np
-from logger import log_debug,log_data
+from logger import log_debug,log_data, log_procd
 import os, sys, math
 log_prefix = '[' + os.path.basename(__file__)
 class GP:
     # System Parameters
-    n_episode = 1
-    n_time_steps = 3
+    n_episode = 2
+    n_time_steps = 10
     delta_t   = 1
     @staticmethod
     def RESET(env, agent):
@@ -17,7 +17,7 @@ class GP:
     CPU = 200000
     n_UEs = 1000
     n_VM = 8 # number of VMs
-    n_NF_inst = [2,2,2,2,2,2,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF, RISE
+    n_NF_inst = [3,2,2,2,2,2,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF, RISE
     nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF", "RISE"]
     next_nf   = [[["SMF",1],["AUSF",5]], [["AMF",0], ["UPF",2]], [["SMF",1]], [["UDR",4]], [["",-1]], [["UDM",3]],[["AMF", 0]]]
     req_type  = ["RegistrationRequest","AuthenticationResponse","SecurityModeComplete","IdentityResponse","RegistrationComplete","PDUSessionEstablishmentRequest"]
@@ -42,12 +42,13 @@ class GP:
     mu_VM = 1
 
     # Log setting
-    logDebugAvai = True
-    logDataAvai  = True
-    logOptional  = True
-    logTopology  = True
-    logRequest   = True
-    logObservation   = True
+    logDebugAvai = False
+    logDataAvai  = False
+    logOptional  = False
+    logTopology  = False
+    logRequest   = False
+    logObservation   = False
+    logProcedure = True
     @staticmethod
     def getLogInfo(log_prefix, line):
         return log_prefix +'-' +str(line) +'][RODC-DDPG]'
@@ -82,6 +83,11 @@ class GP:
                 log_data.logger.debug(str % value)
             else:
                 log_data.logger.debug(str)
+        if GP.logProcedure and type is 'procedure':
+            if value is not None:
+                log_procd.logger.debug(str % value)
+            else:
+                log_procd.logger.debug(str)
 
     # System Running
     obs_on_road = []

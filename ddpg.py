@@ -34,9 +34,11 @@ class DDPG:
         self.tau     = 0.01
         self.memory  = deque(maxlen=4000)
 
+        self.state_dim, self.act_dim = GP.get_dim_action_state()
+
         self.actor_state_input, self.actor_model = self.create_actor_model()
         _, self.target_actor_model = self.create_actor_model()
-        self.actor_critic_grad = tf.placeholder(tf.float32, [None, 1])
+        self.actor_critic_grad = tf.placeholder(tf.float32, [None, self.act_dim])
         actor_model_weights    = self.actor_model.trainable_weights
         self.actor_grads = tf.gradients(self.actor_model.output, actor_model_weights, -self.actor_critic_grad)
         grads = zip(self.actor_grads, actor_model_weights)
@@ -52,22 +54,20 @@ class DDPG:
         self.pending_a = None
 
     def create_actor_model(self):
-        state_dim, act_dim = GP.get_dim_action_state()
-        state_input = Input(shape=(state_dim,))
+        state_input = Input(shape=(self.state_dim,))
         h1 = Dense(300, activation='relu')(state_input)
         h2 = Dense(400, activation='relu')(h1)
-        output = Dense(act_dim, activation='tanh')(h2)
+        output = Dense(self.act_dim, activation='tanh')(h2)
         model = Model(inputs=state_input, outputs=output)
         adam = Adam(lr=0.0001)
         model.compile(loss="mse", optimizer=adam)
         return state_input, model
 
     def create_critic_model(self):
-        state_dim, act_dim = GP.get_dim_action_state()
-        state_input = Input(shape=(state_dim,))
+        state_input = Input(shape=(self.state_dim,))
         state_h1 = Dense(300, activation='relu')(state_input)
         state_h2 = Dense(400)(state_h1)
-        action_input = Input(shape=(act_dim,))
+        action_input = Input(shape=(self.act_dim,))
         action_h1 = Dense(400)(action_input)
         merged = Concatenate()([state_h2, action_h1])
         merged_h1 = Dense(500, activation='relu')(merged)
@@ -93,7 +93,7 @@ class DDPG:
             self.pending_s, self.pending_a = s, a
 
     def train(self):
-        batch_size = 1
+        batch_size = 256
         if len(self.memory) < batch_size:
             return
         samples = random.sample(self.memory, batch_size)
@@ -102,6 +102,7 @@ class DDPG:
         self.train_actor(samples)
 
     def train_critic(self, samples):
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Training critic]',None,'procedure')
         s_ts, actions, rewards, s_ts1 = stack_samples(samples)
         target_actions = self.target_actor_model.predict(s_ts1)
         future_rewards = self.target_critic_model.predict([s_ts, target_actions])
@@ -109,6 +110,7 @@ class DDPG:
         self.critic_model.fit([s_ts, actions], rewards, verbose=0)
 
     def train_actor(self, samples):
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Training actor]',None,'procedure')
         s_ts, _, _, _ = stack_samples(samples)
         predicted_actions = self.actor_model.predict(s_ts)
         grads = self.sess.run(self.critic_grads, feed_dict={
@@ -125,6 +127,7 @@ class DDPG:
         self.update_critic_target()
 
     def update_actor_target(self):
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Update actor target]',None,'procedure')
         actor_model_weights = self.actor_model.get_weights()
         actor_target_weights = self.target_actor_model.get_weights()
         for i in range(len(actor_target_weights)):
@@ -132,6 +135,7 @@ class DDPG:
         self.target_actor_model.set_weights(actor_target_weights)
 
     def update_critic_target(self):
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Update critic target]',None,'procedure')
         critic_model_weights = self.critic_model.get_weights()
         critic_target_weights = self.target_critic_model.get_weights()
         for i in range(len(critic_target_weights)):
