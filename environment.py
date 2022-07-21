@@ -92,6 +92,8 @@ class ENV:
                     for lo in inst.l_out[i]:
                         if lo[3] > max:
                             max = lo[3]
+                    if max == 0:
+                        max = 0.0001
                     for lo in inst.l_out[i]:
                         lo[4] = int(10/max*lo[3])
                         log_tmp += 'inst(' + str(lo[0]) + ',' + str(lo[1]) + ',' + str(lo[2]) + ',' + str(lo[3]) + ',' + str(lo[4]) + ',' + str(lo[5]) + ')'
