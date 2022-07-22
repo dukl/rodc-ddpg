@@ -5,7 +5,7 @@ import tensorflow as tf
 from keras.models import Sequential, Model
 from keras.layers import Dense, Dropout, Input
 from keras.layers.merge import Add, Concatenate
-from keras.optimizers import adam_v2
+from keras.optimizers import Adam
 import keras.backend as K
 from collections import deque
 from globalParameters import GP
@@ -15,7 +15,7 @@ from tqdm import trange
 
 class RODC(DDPG):
     def __init__(self):
-        super.__init__()
+        super(RODC, self).__init__()
         self.name = 'rodc'
         self.finalized = False
         self.layers, self.max_logvar, self.min_logvar = [], None, None

@@ -9,7 +9,7 @@ import tensorflow as tf
 from keras.models import Sequential, Model
 from keras.layers import Dense, Dropout, Input
 from keras.layers.merge import Add, Concatenate
-from keras.optimizers import adam_v2
+from keras.optimizers import Adam
 import keras.backend as K
 from collections import deque
 
@@ -59,7 +59,7 @@ class DDPG:
         h2 = Dense(400, activation='relu')(h1)
         output = Dense(self.act_dim, activation='tanh')(h2)
         model = Model(inputs=state_input, outputs=output)
-        adam = adam_v2.Adam(lr=0.0001)
+        adam = Adam(lr=0.0001)
         model.compile(loss="mse", optimizer=adam)
         return state_input, model
 
@@ -73,7 +73,7 @@ class DDPG:
         merged_h1 = Dense(500, activation='relu')(merged)
         output = Dense(1, activation='linear')(merged_h1)
         model = Model(inputs=[state_input, action_input], outputs=output)
-        adam = adam_v2.Adam(lr=0.0001)
+        adam = Adam(lr=0.0001)
         model.compile(loss="mse", optimizer=adam)
         return state_input, action_input, model
 
