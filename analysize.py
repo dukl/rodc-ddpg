@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 type = ['no-delay-ddpg','delay-ddpg']
+date = '-0722'
 
 color = ['red', 'green', 'blue']
 
@@ -12,7 +13,7 @@ episode_reward = [[] for _ in range(len(type))]
 complete_rate  = [[] for _ in range(len(type))]
 
 for i in range(len(type)):
-    file = 'data/procedure-'+type[i]+'.log'
+    file = 'data/procedure-'+type[i]+date+'.log'
     print(file)
     with open(file) as f:
         for line in f:
@@ -28,7 +29,7 @@ for i in range(len(type)):
 fig, ax = plt.subplots()
 for i in range(len(episode_reward)):
     ax.plot(episode_reward[i], color=color[i])
-plt.savefig('data/episode_reward_0721.png', bbox_inches='tight',dpi=fig.dpi,pad_inches=0.1)
+plt.savefig('data/episode-reward'+date+'.png', bbox_inches='tight',dpi=fig.dpi,pad_inches=0.1)
 plt.show()
 
 fig, ax = plt.subplots()
@@ -38,5 +39,5 @@ for i in range(len(complete_rate)):
     print(len(evaluation_result))
     print(evaluation_result)
     ax.plot(evaluation_result, color=color[i])
-plt.savefig('data/episode_complete_0721.png', bbox_inches='tight',dpi=fig.dpi,pad_inches=0.1)
+plt.savefig('data/episode-complete'+date+'.png', bbox_inches='tight',dpi=fig.dpi,pad_inches=0.1)
 plt.show()

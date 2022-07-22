@@ -103,6 +103,9 @@ class ENV:
         _range = np.max(action.value) - np.min(action.value)
         norm_a = (action.value - np.min(action.value)) / _range
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-24][env executes a[%d]=%s]',(action.id, str(norm_a)),'procedure')
+        self.n_msg_req.append(0)
+        self.n_msg_reject.append(0)
+        self.msg_service_time.append([0, 0])
         self.env_act(norm_a)
         self.running((action.id + 1)*GP.delta_t)
 
@@ -121,10 +124,6 @@ class ENV:
         return obs
 
     def add_dynamics_before_each_time_step(self, next_t):
-        self.n_msg_req.append(0)
-        self.n_msg_reject.append(0)
-        self.msg_service_time.append([0, 0])
-
         for vm in self.vms:
             for msg in vm.msg_queue:
                 if msg.ue_id >= 0:
