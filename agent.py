@@ -5,13 +5,16 @@ from actions import ACT
 from observation_reward import OBSRWD
 from forwardModel import FM
 from ddpg import DDPG
+from rodc_ddpg import RODC
 import os,sys
 import numpy as np
 log_prefix = '[' + os.path.basename(__file__)
 
+
 class Agent:
     def __init__(self):
         self.ddpg = DDPG()
+        self.rodc = RODC()
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-2-3][Initialize actor/critic - behaviour/target networks]',None,'optional')
         self.forward_model = FM()
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-4][Initialize Forward Model]', None, 'optional')

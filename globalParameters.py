@@ -4,6 +4,7 @@ import os, sys, math
 log_prefix = '[' + os.path.basename(__file__)
 class GP:
     # System Parameters
+    n_ensemble = 5
     n_episode = 2
     n_time_steps = 10
     delta_t   = 1
