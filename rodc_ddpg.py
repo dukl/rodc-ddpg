@@ -12,10 +12,12 @@ from globalParameters import GP
 from FC import FC
 from TensorStandardScaler import TensorStandardScaler
 from tqdm import trange
+import os,sys
+log_prefix = '[' + os.path.basename(__file__)
 
-class RODC(DDPG):
+class RODC():
     def __init__(self):
-        super(RODC, self).__init__()
+        self.sess = GP.sess
         self.name = 'rodc'
         self.finalized = False
         self.layers, self.max_logvar, self.min_logvar = [], None, None
@@ -32,6 +34,11 @@ class RODC(DDPG):
         self.model_loaded = False
         self.is_probabilistic = True
         self.is_tf_model = True
+        self.state_dim, self.act_dim = GP.get_dim_action_state()
+        self.tf_sc     = tf.placeholder(shape=[1, self.state_dim], dtype=tf.float32)
+        self.tf_A_avai = tf.placeholder(shape=[None, 1, self.act_dim], dtype=tf.float32)
+        self.create_forward_model()
+
 
     def add(self, layer):
         layer.set_ensemble_size(self.num_nets)
@@ -70,7 +77,7 @@ class RODC(DDPG):
             self.mse_loss = self._compile_losses(self.sy_train_in, self.sy_train_targ, inc_var_loss=False)
             self.train_op = self.optimizer.minimize(train_loss, var_list=self.optvars)
 
-        self.sess.run(tf.variables_initializer(self.optvars+self.nonoptvars+self.optimizer.variables()))
+        #self.sess.run(tf.variables_initializer(self.optvars+self.nonoptvars+self.optimizer.variables()))
 
         with tf.variable_scope(self.name):
             self.sy_pred_in2d = tf.placeholder(dtype=tf.float32, shape=[None, self.layers[0].get_input_dim()], name='2D_training_inputs')
@@ -78,7 +85,7 @@ class RODC(DDPG):
             self.sy_pred_mean2d = tf.reduce_sum(self.sy_pred_mean2d_fac, axis=0)
             self.sy_pred_var2d = tf.reduce_sum(self.sy_pred_var2d_fac, axis=0) + tf.reduce_sum(tf.square(self.sy_pred_mean2d_fac-self.sy_pred_mean2d), axis=0)
             self.sy_pred_in3d = tf.placeholder(dtype=tf.float32, shape=[self.num_nets, None, self.layers[0].get_input_dim()], name='3D_training_inputs')
-            self.sy_pred_mean3d_fac, self.sy_pred_var3d_fac = self.create_predication_tensors(self.sy_pred_in3d, factored=True)
+            self.sy_pred_mean3d_fac, self.sy_pred_var3d_fac = self.create_prediction_tensors(self.sy_pred_in3d, factored=True)
         self.finalized = True
 
     def train(self, inputs, targets, batch_size=32, epochs=100, hide_progress=False, holdout_ratio=0.0, max_logging=5000, misc=None):
@@ -126,23 +133,21 @@ class RODC(DDPG):
                         )
                     })
 
-    def predict(self, inputs, factored=False, *args, **kwargs):
-        if len(inputs.shape) == 2:
-            if factored:
-                return self.sess.run(
-                    [self.sy_pred_mean2d_fac, self.sy_pred_var2d_fac],
-                    feed_dict={self.sy_pred_in2d:inputs}
-                )
-            else:
-                return self.sess.run(
-                    [self.sy_pred_mean2d, self.sy_pred_var2d],
-                    feed_dict={self.sy_pred_in2d:inputs}
-                )
-        else:
-            return self.sess.run(
-                [self.sy_pred_mean3d_fac, self.sy_pred_var3d_fac],
-                feed_dict={self.sy_pred_in3d:inputs}
-            )
+    def predict(self, sc, A_avai, ts):
+        tf_pred_obs = self.tf_predict_state(len(A_avai))
+        scV = sc.value.reshape([1, self.state_dim])
+        actV = []
+        for a in A_avai:
+            actV.append(a.value)
+        actV = np.array(actV)
+        actV = actV.reshape(actV.shape[0], 1, actV.shape[1])
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[line-24][predicting s[%d] using s[%d] and a%s] at time %d', (ts, sc.id, str([a.id for a in A_avai]), ts), 'procedure')
+
+        pred_state = GP.sess.run(
+            tf_pred_obs, feed_dict={self.tf_sc:scV, self.tf_A_avai:actV}
+        )
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[predicted state s[%d]=\n%s]', (ts, str(pred_state[0])), 'procedure')
+        return pred_state[0].reshape(1, self.state_dim)
 
     def create_prediction_tensors(self, inputs, factored=False, *args, **kwargs):
         factored_mean, factored_variance = self._compile_outputs(inputs)
@@ -188,3 +193,20 @@ class RODC(DDPG):
         self.add(FC(200, activation="swish", weight_decay=0.000075))
         self.add(FC(self.state_dim, weight_decay=0.0001))
         self.finalize(tf.train.AdamOptimizer, {"learning_rate": 0.001})
+
+    def tf_predict_state(self, n):
+        idx = tf.constant(0)
+        def continue_prediction(idx, *args):
+            return tf.less(idx, n)
+        def iteration(idx, sc):
+            cur_acs = self.tf_A_avai[idx]
+            inputs = tf.concat([sc, cur_acs], axis=-1)
+            mean, var = self.create_prediction_tensors(inputs)
+            return idx + 1, mean + sc
+        _, pred_state = tf.while_loop(
+            cond=continue_prediction, body=iteration, loop_vars=[idx, self.tf_sc],
+            shape_invariants=[
+                idx.get_shape(), self.tf_sc.get_shape()
+            ]
+        )
+        return pred_state

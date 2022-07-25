@@ -26,9 +26,9 @@ if __name__ == '__main__':
             env.add_dynamics_before_each_time_step((ts+1)*GP.delta_t)
             obs_reward = env.send_obs_reward(ts)
             GP.obs_on_road.append(obs_reward)
-            #action = agent.receive_observations(GP.CHECK_OBSERVATIONS(ts),ts)
+            action = agent.receive_observations(GP.CHECK_OBSERVATIONS(ts),ts)
             #action = agent.receive_observation_no_delay(GP.CHECK_OBSERVATIONS(ts), ts)
-            action = agent.receive_observation_delay_ddpg(GP.CHECK_OBSERVATIONS(ts), ts)
+            #action = agent.receive_observation_delay_ddpg(GP.CHECK_OBSERVATIONS(ts), ts)
             env.execute_action(action)
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'Episode-%d reward: %f', (ep, env.episode_reward[-1]), 'procedure')
         n_ue_succ, average_service_time = 0, 0

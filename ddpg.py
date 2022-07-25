@@ -26,8 +26,7 @@ def stack_samples(samples):
 
 class DDPG:
     def __init__(self):
-        self.sess = tf.Session()
-        K.set_session(self.sess)
+        self.sess = GP.sess
         self.epsilon = 0.9
         self.gamma   = 0.99
         self.epsilon_decay = 0.99995

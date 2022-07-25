@@ -1,8 +1,14 @@
+import tensorflow as tf
+import keras.backend as K
 import numpy as np
 from logger import log_debug,log_data, log_procd
 import os, sys, math
 log_prefix = '[' + os.path.basename(__file__)
 class GP:
+    #cfg = tf.ConfigProto()
+    #cfg.gpu_options.allow_growth = True
+    sess = tf.Session()
+    K.set_session(sess)
     # System Parameters
     n_ensemble = 5
     n_episode = 2

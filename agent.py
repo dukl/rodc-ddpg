@@ -1,5 +1,5 @@
 import random
-
+import tensorflow as tf
 from globalParameters import GP
 from actions import ACT
 from observation_reward import OBSRWD
@@ -14,13 +14,13 @@ log_prefix = '[' + os.path.basename(__file__)
 class Agent:
     def __init__(self):
         self.ddpg = DDPG()
-        self.rodc = RODC()
-        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-2-3][Initialize actor/critic - behaviour/target networks]',None,'optional')
-        self.forward_model = FM()
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[line-2-3][Initialize actor/critic - behaviour/target networks]', None, 'optional')
+        self.forward_model = RODC()
+        GP.sess.run(tf.initialize_all_variables())
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-4][Initialize Forward Model]', None, 'optional')
         self.A, self.A_avai = [], []  # RODC-DDPG line-5
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-5][Initialize the action buffer len(A)=%d and len(A_avai)=%d]',(len(self.A),len(self.A_avai)),'optional')
-        self.sc = OBSRWD(-1, 0, -1)  # latest observation RODC-DDPG Line-6
+        self.sc = OBSRWD(-1, np.array([0.0001 for _ in range(self.forward_model.state_dim)]), -1)  # latest observation RODC-DDPG Line-6
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-6][Initialize the latest observation sc randomly id(sc)=%d ]', (self.sc.id), 'optional')
         self.T = [[] for _ in range(2)]
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-8][Initialize the raw trajectory T for actions: len(T[0])=%d]', (len(self.T[0])), 'optional')
@@ -30,11 +30,15 @@ class Agent:
 
 
     def reset(self):
-        pass
+        self.A.clear()
+        self.A_avai.clear()
+        self.sc = OBSRWD(-1, np.array([0.0001 for _ in range(self.forward_model.state_dim)]), -1)
+        self.T = [[] for _ in range(2)]
+
     def receive_observations(self,obs,ts):
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-15][Check: id(sc)=%d, len(A)=%d]',(self.sc.id, len(self.A)),'optional')
         if self.sc.id is -1 and len(self.A) is 0:
-            action = ACT(-1, None)
+            action = ACT(-1, np.array([1.0 for _ in range(self.forward_model.act_dim)]))
             self.A.append(action)
             self.A_avai.append(action)
             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-16][initialize an action a[%d], len(A)=%d, len(A_avai)=%d]', (action.id,len(self.A),len(self.A_avai)), 'optional')
@@ -61,7 +65,7 @@ class Agent:
         for a in self.A_avai:
             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[agent reset A_avai to be a[%d] at time step %d]', (a.id, ts), 'data')
         act_value = self.ddpg.act(self.forward_model.predict(self.sc, self.A_avai, ts))
-        action = ACT(ts, act_value)
+        action = ACT(ts, act_value[0])
         self.A.append(action)
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-25][agent adds a[%d] into A: len(A)=%d, len(A_avai)=%d]', (action.id, len(self.A), len(self.A_avai)), 'optional')
         self.T[0].append(action)
