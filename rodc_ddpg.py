@@ -39,7 +39,7 @@ class RODC():
         self.tf_sc     = tf.placeholder(shape=[1, self.state_dim], dtype=tf.float32)
         self.tf_A_avai = tf.placeholder(shape=[None, 1, self.act_dim], dtype=tf.float32)
         self.create_forward_model()
-        self.memory = deque(maxlen=4000)
+        self.memory = deque(maxlen=400000)
         self.train_in = np.array([]).reshape(
             0, self.state_dim+self.act_dim
         )
@@ -97,10 +97,9 @@ class RODC():
         self.finalized = True
 
     def train(self):
-        batch_size = 2
-        if len(self.memory) < batch_size:
+        if len(self.memory) < GP.n_forward_model or len(self.memory) % GP.n_forward_model != 0:
             return
-        samples = random.sample(self.memory, batch_size)
+        samples = random.sample(self.memory, GP.n_forward_model)
         new_train_in, new_train_target = [], []
         for sample in samples:
             s_t, a_t, s_t1 = sample[0], sample[1], sample[2]

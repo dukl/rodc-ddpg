@@ -31,7 +31,8 @@ class DDPG:
         self.gamma   = 0.99
         self.epsilon_decay = 0.99995
         self.tau     = 0.01
-        self.memory  = deque(maxlen=4000)
+        self.memory  = deque(maxlen=400000)
+        self.update_ite = 0
 
         self.state_dim, self.act_dim = GP.get_dim_action_state()
 
@@ -92,10 +93,9 @@ class DDPG:
             self.pending_s, self.pending_a = s, a
 
     def train(self):
-        batch_size = 1
-        if len(self.memory) < batch_size:
+        if len(self.memory) < GP.n_ddpg or len(self.memory) % GP.n_ddpg != 0:
             return
-        samples = random.sample(self.memory, batch_size)
+        samples = random.sample(self.memory, GP.n_ddpg)
         self.samples = samples
         self.train_critic(samples)
         self.train_actor(samples)
@@ -122,6 +122,9 @@ class DDPG:
         })
 
     def update_target(self):
+        self.update_ite += 1
+        if self.update_ite < GP.n_ddpg_update or self.update_ite % GP.n_ddpg_update != 0:
+            return
         self.update_actor_target()
         self.update_critic_target()
 

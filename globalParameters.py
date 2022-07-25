@@ -10,9 +10,8 @@ class GP:
     sess = tf.Session()
     K.set_session(sess)
     # System Parameters
-    n_ensemble = 6
     n_episode = 1
-    n_time_steps = 10
+    n_time_steps = 30
     delta_t   = 1
     @staticmethod
     def RESET(env, agent):
@@ -119,4 +118,10 @@ class GP:
     def generate_dynamics_sin():
         x = np.arange(0, 3*GP.n_time_steps*GP.delta_t, 0.01)
         GP.nf_cpu_dynamics_sin = np.sin(GP.nf_cpu_change_rate_sin * x) * GP.CPU * GP.delta_t + GP.CPU * GP.delta_t
+
+    # training setting
+    n_ensemble = 6
+    n_forward_model = 10
+    n_ddpg = 10
+    n_ddpg_update = 10
 
