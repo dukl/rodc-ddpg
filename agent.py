@@ -82,7 +82,11 @@ class Agent:
                             remove_eles[0].append(act)
                             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-28][agent adds samples (s[%d], a[%d], s[%d]) into D_ddpg and D_fm]', (self.T[1][index].id, act.id, self.T[1][index+1].id), 'optional')
                             GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-28][agent adds samples (s[%d], a[%d], s[%d]) into D_ddpg and D_fm]', (self.T[1][index].id, act.id, self.T[1][index+1].id), 'data')
-                            self.D.append([self.T[1][index], act, self.T[1][index+1]])
+                            #self.D.append([self.T[1][index], act, self.T[1][index+1]])
+                            GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[Store one memory: \ns[%d]=%s\na[%d]=%s\nr[%d]=%d\ns[%d]=%s]', (self.T[1][index].id, str(self.T[1][index].value), act.id, str(act.value), self.T[1][index+1].id, self.T[1][index+1].reward, self.T[1][index+1].id, str(self.T[1][index+1].value)), 'procedure')
+                            #print(self.T[1][index].value.shape, act.value.shape)
+                            self.ddpg.memory.append([self.T[1][index].value.reshape(1, self.forward_model.state_dim), act.value.reshape(1, self.forward_model.act_dim), self.T[1][index+1].reward, self.T[1][index+1].value.reshape(1, self.forward_model.state_dim)])
+                            self.forward_model.memory.append([self.T[1][index].value.reshape(1, self.forward_model.state_dim), act.value.reshape(1, self.forward_model.act_dim), self.T[1][index+1].value.reshape(1, self.forward_model.state_dim)])
                             break
             for ele in remove_eles[0]:
                 self.T[0].remove(ele)
@@ -90,7 +94,13 @@ class Agent:
             for ele in remove_eles[1]:
                 self.T[1].remove(ele)
                 GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[line-29][agent removes elements s[%d] from T: len(T[0])=%d, len(T[1])=%d]', (ele.id, len(self.T[0]), len(self.T[1])), 'optional')
+        self.train()
         return action
+
+    def train(self):
+        self.ddpg.train()
+        self.ddpg.update_target()
+        self.forward_model.train()
 
     def receive_observation_no_delay(self, obs, ts):
         state_dim, _ = GP.get_dim_action_state()

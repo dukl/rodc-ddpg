@@ -92,7 +92,7 @@ class DDPG:
             self.pending_s, self.pending_a = s, a
 
     def train(self):
-        batch_size = 256
+        batch_size = 1
         if len(self.memory) < batch_size:
             return
         samples = random.sample(self.memory, batch_size)

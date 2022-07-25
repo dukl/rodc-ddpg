@@ -10,8 +10,8 @@ class GP:
     sess = tf.Session()
     K.set_session(sess)
     # System Parameters
-    n_ensemble = 5
-    n_episode = 2
+    n_ensemble = 6
+    n_episode = 1
     n_time_steps = 10
     delta_t   = 1
     @staticmethod

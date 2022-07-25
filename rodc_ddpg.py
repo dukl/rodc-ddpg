@@ -12,6 +12,7 @@ from globalParameters import GP
 from FC import FC
 from TensorStandardScaler import TensorStandardScaler
 from tqdm import trange
+import random
 import os,sys
 log_prefix = '[' + os.path.basename(__file__)
 
@@ -38,6 +39,13 @@ class RODC():
         self.tf_sc     = tf.placeholder(shape=[1, self.state_dim], dtype=tf.float32)
         self.tf_A_avai = tf.placeholder(shape=[None, 1, self.act_dim], dtype=tf.float32)
         self.create_forward_model()
+        self.memory = deque(maxlen=4000)
+        self.train_in = np.array([]).reshape(
+            0, self.state_dim+self.act_dim
+        )
+        self.train_target = np.array([]).reshape(
+            0, self.state_dim
+        )
 
 
     def add(self, layer):
@@ -88,14 +96,28 @@ class RODC():
             self.sy_pred_mean3d_fac, self.sy_pred_var3d_fac = self.create_prediction_tensors(self.sy_pred_in3d, factored=True)
         self.finalized = True
 
-    def train(self, inputs, targets, batch_size=32, epochs=100, hide_progress=False, holdout_ratio=0.0, max_logging=5000, misc=None):
+    def train(self):
+        batch_size = 2
+        if len(self.memory) < batch_size:
+            return
+        samples = random.sample(self.memory, batch_size)
+        new_train_in, new_train_target = [], []
+        for sample in samples:
+            s_t, a_t, s_t1 = sample[0], sample[1], sample[2]
+            new_train_in.append(np.concatenate([s_t, a_t], axis=-1))
+            new_train_target.append(s_t1)
+        self.train_in = np.concatenate([self.train_in]+new_train_in, axis=0)
+        self.train_target = np.concatenate([self.train_target]+new_train_target, axis=0)
+        self._train(self.train_in, self.train_target)
+
+    def _train(self, inputs, targets, batch_size=32, epochs=100, hide_progress=False, holdout_ratio=0.0, max_logging=5000, misc=None):
         def shuffle_rows(arr):
             idxs = np.argsort(np.random.uniform(size=arr.shape), axis=-1)
             return arr[np.arange(arr.shape[0])[:,None], idxs]
         num_holdout = min(int(inputs.shape[0] * holdout_ratio), max_logging)
         permutation = np.random.permutation(inputs.shape[0])
         inputs, holdout_inputs = inputs[permutation[num_holdout:]], inputs[permutation[:num_holdout]]
-        targets, holdout_targets = targets[permutation[num_holdout:]], targets[permutation[:,num_holdout]]
+        targets, holdout_targets = targets[permutation[num_holdout:]], targets[permutation[:num_holdout]]
         holdout_inputs = np.tile(holdout_inputs[None], [self.num_nets, 1, 1])
         holdout_targets = np.tile(holdout_targets[None], [self.num_nets, 1, 1])
 
