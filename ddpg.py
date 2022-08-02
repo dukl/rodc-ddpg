@@ -42,7 +42,7 @@ class DDPG:
         actor_model_weights    = self.actor_model.trainable_weights
         self.actor_grads = tf.gradients(self.actor_model.output, actor_model_weights, -self.actor_critic_grad)
         grads = zip(self.actor_grads, actor_model_weights)
-        self.optimize = tf.train.AdamOptimizer(0.0001).apply_gradients(grads)
+        self.optimize = tf.train.AdamOptimizer(0.01).apply_gradients(grads)
 
         self.critic_state_input, self.critic_action_input, self.critic_model = self.create_critic_model()
         _, _, self.target_critic_model = self.create_critic_model()
@@ -55,25 +55,25 @@ class DDPG:
 
     def create_actor_model(self):
         state_input = Input(shape=(self.state_dim,))
-        h1 = Dense(300, activation='relu')(state_input)
-        h2 = Dense(400, activation='relu')(h1)
+        h1 = Dense(64, activation='relu')(state_input)
+        h2 = Dense(64, activation='relu')(h1)
         output = Dense(self.act_dim, activation='tanh')(h2)
         model = Model(inputs=state_input, outputs=output)
-        adam = Adam(lr=0.0001)
+        adam = Adam(lr=0.01)
         model.compile(loss="mse", optimizer=adam)
         return state_input, model
 
     def create_critic_model(self):
         state_input = Input(shape=(self.state_dim,))
-        state_h1 = Dense(300, activation='relu')(state_input)
-        state_h2 = Dense(400)(state_h1)
+        state_h1 = Dense(64, activation='relu')(state_input)
+        state_h2 = Dense(64)(state_h1)
         action_input = Input(shape=(self.act_dim,))
-        action_h1 = Dense(400)(action_input)
+        action_h1 = Dense(64)(action_input)
         merged = Concatenate()([state_h2, action_h1])
-        merged_h1 = Dense(500, activation='relu')(merged)
+        merged_h1 = Dense(64, activation='relu')(merged)
         output = Dense(1, activation='linear')(merged_h1)
         model = Model(inputs=[state_input, action_input], outputs=output)
-        adam = Adam(lr=0.0001)
+        adam = Adam(lr=0.01)
         model.compile(loss="mse", optimizer=adam)
         return state_input, action_input, model
 

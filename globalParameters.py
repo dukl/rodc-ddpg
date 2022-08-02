@@ -122,6 +122,6 @@ class GP:
     # training setting
     n_ensemble = 6
     n_forward_model = 10
-    n_ddpg = 10
-    n_ddpg_update = 10
+    n_ddpg = 100
+    n_ddpg_update = 40
 
