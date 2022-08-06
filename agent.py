@@ -16,7 +16,7 @@ class Agent:
         self.ddpg = DDPG()
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[line-2-3][Initialize actor/critic - behaviour/target networks]', None, 'optional')
         self.forward_model = RODC()
-        GP.sess.run(tf.initialize_all_variables())
+        GP.sess.run(tf.global_variables_initializer())
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-4][Initialize Forward Model]', None, 'optional')
         self.A, self.A_avai = [], []  # RODC-DDPG line-5
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[line-5][Initialize the action buffer len(A)=%d and len(A_avai)=%d]',(len(self.A),len(self.A_avai)),'optional')

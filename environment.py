@@ -109,17 +109,40 @@ class ENV:
         self.running((action.id + 1)*GP.delta_t)
 
     def send_obs_reward(self, ts):
-        s = []
+        lnf, c, lvm = [], [], [[GP.maxV]*self.n_nf_inst for _ in range(self.n_nf_inst)]
         for nf in self.nfs:
             for inst in nf:
-                s.append([inst.loc_id, len(self.vms[inst.loc_id].msg_queue), len(inst.msg_queue), inst.C])
-                GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '(%d,%d,%d)[%d, %d, %d, %d]', (inst.loc_id, inst.nf_id, inst.inst_id, inst.loc_id, len(self.vms[inst.loc_id].msg_queue), len(inst.msg_queue), inst.C), 'optional')
-        tmp = np.array(s).reshape(1, len(s)*4)[0]
-        _range = np.max(tmp) - np.min(tmp)
-        norm_s = (tmp - np.min(tmp))/_range
-        norm_s[norm_s==0] = 0.001
-        obs = OBSRWD(ts, norm_s, self.action_reward)
-        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[line-12][env sends s[%d]=%s, reward=%f delay=%f]\n', (obs.id, str(norm_s), self.action_reward, obs.n_ts), 'procedure')
+                if inst.lamda == 0:
+                    lnf.append(0.000001)
+                else:
+                    lnf.append(inst.lamda)
+                c.append(inst.C)
+                #s.append([inst.loc_id, len(self.vms[inst.loc_id].msg_queue), len(inst.msg_queue), inst.C])
+                #GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '(%d,%d,%d)[%d, %d, %d, %d]', (inst.loc_id, inst.nf_id, inst.inst_id, inst.loc_id, len(self.vms[inst.loc_id].msg_queue), len(inst.msg_queue), inst.C), 'optional')
+        for i in range(len(self.nfs)):
+            for j in range(len(self.nfs[i])):
+                for nnf in self.nfs[i][j].next_nf:
+                    for ninst in self.nfs[nnf[1]]:
+                        x, y = 0, 0
+                        for k in range(i):
+                            x += len(self.nfs[k])
+                        x += j
+                        for k in range(ninst.nf_id):
+                            y += len(self.nfs[k])
+                        y += ninst.inst_id
+                        if self.nfs[i][j].loc_id == ninst.loc_id:
+                            lvm[x][y] = 0
+                        else:
+                            lvm[x][y] = self.vms[ninst.loc_id].lamda
+        diag_lnf = np.diag(np.array(lnf)/GP.maxL)
+        diag_cpu = np.diag(np.array(c)/GP.maxC)
+        mtx      = np.array(lvm)/GP.maxL
+        s = GP.k1*diag_lnf + GP.k2*diag_cpu + GP.k3*mtx
+        s[s==0] = 0.000001
+        s, _ = np.linalg.eig(s)
+        s = [abs(a) for a in s.tolist()]
+        obs = OBSRWD(ts, s, self.action_reward)
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[line-12][env sends s[%d]=%s, reward=%f delay=%f]\n', (obs.id, str(s), self.action_reward, obs.n_ts), 'procedure')
         return obs
 
     def add_dynamics_before_each_time_step(self, next_t):
@@ -265,6 +288,7 @@ class VM:
         self.msg_queue    = []    # current queue of network adapter
         self.nf_instances = []    # current 5G-CN NF instances
         self.id           = id
+        self.lamda = 0
     def reset(self):
         self.msg_queue.clear()
 
@@ -286,6 +310,7 @@ class NF:
         self.nf_processing = [None,0]
         self.dynamics_idx  = random.randint(100,600)
         self.history_cpu_per_ts = []
+        self.lamda = 0
     def reset(self):
         self.msg_queue.clear()
         self.history_cpu_per_ts.clear()

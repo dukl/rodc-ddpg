@@ -11,7 +11,7 @@ class GP:
     K.set_session(sess)
     # System Parameters
     n_episode = 1
-    n_time_steps = 30
+    n_time_steps = 3
     delta_t   = 1
     @staticmethod
     def RESET(env, agent):
@@ -124,4 +124,7 @@ class GP:
     n_forward_model = 10
     n_ddpg = 100
     n_ddpg_update = 40
+
+    k1, k2, k3 = 1, 1, 1
+    maxL, maxC, maxV = 300, 400000, 1000
 
