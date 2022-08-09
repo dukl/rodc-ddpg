@@ -23,8 +23,9 @@ class GP:
     CPU = 200000
     n_UEs = 1000
     n_VM = 8 # number of VMs
-    n_NF_inst = [3,2,2,2,2,2,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF, RISE
+    n_inst = 4
     nf_name   = ["AMF", "SMF", "UPF", "UDM", "UDR", "AUSF", "RISE"]
+    n_NF_inst = [n_inst]*(len(nf_name)-1)+[1]  # [2,2,2,2,2,2,1] # number of instances of AMF, SMF, UPF, UDM, UDR, AUSF, RISE
     next_nf   = [[["SMF",1],["AUSF",5]], [["AMF",0], ["UPF",2]], [["SMF",1]], [["UDR",4]], [["",-1]], [["UDM",3]],[["AMF", 0]]]
     req_type  = ["RegistrationRequest","AuthenticationResponse","SecurityModeComplete","IdentityResponse","RegistrationComplete","PDUSessionEstablishmentRequest"]
     require_cpu_cycles = [[1200,0,0,2000,500,1500,10], [1000,0,0,800,10,850,10],[1000,0,0,0,0,0,10],[1000,0,0,0,0,0,10],[1000,0,0,0,0,0,10],[1200,2000,2500,0,0,0,10]]
@@ -34,12 +35,13 @@ class GP:
         state_dim, act_dim = 0, 0
         for num in GP.n_NF_inst:
             state_dim += num
-        state_dim *= 4
-        for i in range(len(GP.nf_name)):
-            for nnf in GP.next_nf[i]:
-                if nnf[1] == -1:
-                    continue
-                act_dim += GP.n_NF_inst[i]*GP.n_NF_inst[nnf[1]]
+        state_dim += 3
+        act_dim = GP.n_inst
+        #for i in range(len(GP.nf_name)):
+        #    for nnf in GP.next_nf[i]:
+        #        if nnf[1] == -1:
+        #            continue
+        #        act_dim += GP.n_NF_inst[i]*GP.n_NF_inst[nnf[1]]
 
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[state_dim = %d, action_dim = %d]', (state_dim, act_dim), 'optional')
         return state_dim, act_dim
@@ -126,5 +128,5 @@ class GP:
     n_ddpg_update = 40
 
     k1, k2, k3 = 1, 1, 1
-    maxL, maxC, maxV = 300, 400000, 1000
+    maxL, maxC, maxV = 300, 400000, -1
 

@@ -3,6 +3,7 @@ from observation_reward import OBSRWD
 import random
 import numpy as np
 
+
 import os, sys
 log_prefix = '[' + os.path.basename(__file__)
 
@@ -28,9 +29,9 @@ class ENV:
             self.vms.append(VM(i))
         for i in range(len(GP.n_NF_inst)):
             for j in range(GP.n_NF_inst[i]):
-                #loc_id = random.randint(0,GP.n_VM-1)
-                nf = NF(GP.nf_name[i],i, i, j)
-                self.vms[i].nf_instances.append(nf)
+                loc_id = random.randint(0,GP.n_VM-1)
+                nf = NF(GP.nf_name[i],loc_id, i, j)
+                self.vms[loc_id].nf_instances.append(nf)
                 self.nfs[i].append(nf)
                 self.n_nf_inst += 1
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Initialize Topology]', None, 'topology')
@@ -109,9 +110,11 @@ class ENV:
         self.running((action.id + 1)*GP.delta_t)
 
     def send_obs_reward(self, ts):
-        lnf, c, lvm = [], [], [[GP.maxV]*self.n_nf_inst for _ in range(self.n_nf_inst)]
+        lnf, c, lvm = [], [], [[GP.maxV]*(self.n_nf_inst-1) for _ in range(self.n_nf_inst-1)]
         for nf in self.nfs:
             for inst in nf:
+                if inst.nf_id == 6:
+                    continue
                 if inst.lamda == 0:
                     lnf.append(0.000001)
                 else:
@@ -120,27 +123,19 @@ class ENV:
                 #s.append([inst.loc_id, len(self.vms[inst.loc_id].msg_queue), len(inst.msg_queue), inst.C])
                 #GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '(%d,%d,%d)[%d, %d, %d, %d]', (inst.loc_id, inst.nf_id, inst.inst_id, inst.loc_id, len(self.vms[inst.loc_id].msg_queue), len(inst.msg_queue), inst.C), 'optional')
         for i in range(len(self.nfs)):
+            if i == 6:
+                continue
             for j in range(len(self.nfs[i])):
                 for nnf in self.nfs[i][j].next_nf:
+                    if nnf[1] == -1:
+                        continue
                     for ninst in self.nfs[nnf[1]]:
-                        x, y = 0, 0
-                        for k in range(i):
-                            x += len(self.nfs[k])
-                        x += j
-                        for k in range(ninst.nf_id):
-                            y += len(self.nfs[k])
-                        y += ninst.inst_id
+                        x,y = i*GP.n_inst+j, ninst.nf_id*GP.n_inst+ninst.inst_id
                         if self.nfs[i][j].loc_id == ninst.loc_id:
                             lvm[x][y] = 0
                         else:
                             lvm[x][y] = self.vms[ninst.loc_id].lamda
-        diag_lnf = np.diag(np.array(lnf)/GP.maxL)
-        diag_cpu = np.diag(np.array(c)/GP.maxC)
-        mtx      = np.array(lvm)/GP.maxL
-        s = GP.k1*diag_lnf + GP.k2*diag_cpu + GP.k3*mtx
-        s[s==0] = 0.000001
-        s, _ = np.linalg.eig(s)
-        s = [abs(a) for a in s.tolist()]
+        s = [lnf, c, lvm]
         obs = OBSRWD(ts, s, self.action_reward)
         GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno) + '[line-12][env sends s[%d]=%s, reward=%f delay=%f]\n', (obs.id, str(s), self.action_reward, obs.n_ts), 'procedure')
         return obs
@@ -154,6 +149,7 @@ class ENV:
             n_cloud_services = random.randint(0, int(0.2 * GP.mu_VM / 0.01))
             for i in range(n_cloud_services):
                 vm.msg_queue.append(REQ(-1, -1, vm.id, -1, -1))
+            vm.lamda += n_cloud_services
         for nf in self.nfs:
             for inst in nf:
                 self.n_msg_req[-1] += len(inst.msg_queue)
@@ -320,6 +316,7 @@ class NF:
 
 class REQ:
     def __init__(self, ue_id, type_id, loc_id, nf_id, inst_id):
+        self.is_new        = False
         self.is_done       = False
         self.is_reject     = False
         self.is_processing = False
