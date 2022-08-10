@@ -7,7 +7,7 @@ from forwardModel import FM
 from ddpg import DDPG
 from rodc_ddpg import RODC
 from environment import REQ
-from dqn_agents import DDQNAgent
+from dqn import DQN
 import os,sys
 import matplotlib.pyplot as plt
 import numpy as np
@@ -44,8 +44,9 @@ class Agent:
         self.requests = []
         self.ue_index = 0
         self.state_dim, self.act_dim = GP.get_dim_action_state()
-        self.model = DDQNAgent(self.state_dim, self.act_dim, False, False, 0, 0.001, 0.999, 0.001, 1, False, True)
-        self.pending_state, self.pending_action = None, None
+        #self.model = DDQNAgent(self.state_dim, self.act_dim, False, False, 0, 0.001, 0.999, 0.001, 1, False, True)
+        self.model = DQN(self.act_dim, self.state_dim, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9, replace_target_iter=10, memory_size=4000)
+        self.pending_transaction, self.n_reqs = None, 0
         self.step_num = 0
 
 
@@ -126,6 +127,7 @@ class Agent:
     def receive_observation_no_delay(self, obs, ts):
         lnf, c, lvm, ret_reward = obs[0].value[0], obs[0].value[1], obs[0].value[2], obs[0].reward
         input_s, actions, img = [], [], []
+        transaction, inter_state, inter_action, inter_reward, nREQs = [], None, None, 0, 0
         req_rate = [0 for _ in range(len(GP.req_type))]
         for req in self.requests:
             req_rate[req.type_id[0]] += 1
@@ -134,41 +136,35 @@ class Agent:
             for ms in GP.msc[req.type_id[0]]:
                 if ms == 6:
                     continue
+                nREQs += 1
                 state = feature(lnf, c, lvm)
                 img.append(state)
                 tmp = np.array([req.type_id[0]+1, req_rate[req.type_id[0]], ms+1])
-                input_s.append(np.concatenate((state, tmp), axis=0))
-                act = self.model.act(input_s[-1])
-                actions.append(act)
+                #input_s.append(np.concatenate((state, tmp), axis=0))
+                con_state = np.concatenate((state, tmp), axis=0)
+                act = self.model.choose_action(con_state)
+                actions.append([req.ue_id, req.type_id[0], ms, act])
                 lnf[ms*GP.n_inst+act] += 1
                 if idx == 1000:
                     idx = ms*GP.n_inst+act
                 else:
                     lvm[idx][ms*GP.n_inst+act] += 1
                     idx = ms*GP.n_inst+act
+                rwd = 0
+                if inter_state is not None:
+                    transaction.append([inter_state, inter_action, inter_reward, con_state])
+                inter_state, inter_action, inter_reward = con_state, act, rwd
         self.requests.clear()
         plt.imshow(np.array(img).T, interpolation='nearest', cmap='bone', origin='lower')
         plt.colorbar()
         plt.show()
-        #input_s = np.array(input_s)
-        #print(input_s)
-        #actions = []
-        #for s in input_s:
-        #    action = self.model.act(s)
-        #    print(action)
-        #    actions.append(action)
-        #if self.pending_state is not None:
-        #    self.model.memorize(self.pending_state, self.pending_action, ret_reward, input_s, False)
-        #self.pending_state, self.pending_action = input_s, action
+        if self.pending_transaction is not None:
+            for item in self.pending_transaction:
+                self.model.store_transition(item[0], item[1], ret_reward*0.8*self.n_reqs+item[2], item[3])
+        self.pending_transaction, self.n_reqs = transaction, nREQs
+        self.model.learn()
 
-        #self.step_num += 1
-        #if self.step_num % 200 == 0:
-        #    self.model.update_target_model()
-        #batch_size = 4
-        #if len(self.model.memory) > batch_size and self.step_num % 2 == 0:
-        #    batch_loss_dict = self.model.replay(batch_size)
-
-        #GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Generated action: a[%d]=%s]',(ts, str(actions)), 'procedure')
+        GP.LOG(GP.getLogInfo(log_prefix, sys._getframe().f_lineno)+'[Generated action: a[%d]=%s]',(ts, str(actions)), 'procedure')
         return ACT(ts, actions)
 
     def receive_observation_delay_ddpg(self, obs, ts):

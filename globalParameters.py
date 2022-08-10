@@ -32,11 +32,7 @@ class GP:
     msc       = [[6,0,5,3,4], [6,0,5,3,4], [6,0], [6,0], [6,0], [6,0,1,2]]
     @staticmethod
     def get_dim_action_state():
-        state_dim, act_dim = 0, 0
-        for num in GP.n_NF_inst:
-            state_dim += num
-        state_dim += 3
-        act_dim = GP.n_inst
+        state_dim, act_dim = GP.n_inst*(len(GP.nf_name)-1)+3, GP.n_inst
         #for i in range(len(GP.nf_name)):
         #    for nnf in GP.next_nf[i]:
         #        if nnf[1] == -1:
